@@ -45,6 +45,7 @@ foreach ( $edd_post_types as $post_type ) {
 		}
 	}
 }
+echo "\nAll Post Types deleted\n";
 
 /** Delete All the Terms & Taxonomies */
 foreach ( array_unique( array_filter( $edd_taxonomies ) ) as $taxonomy ) {
@@ -55,21 +56,24 @@ foreach ( array_unique( array_filter( $edd_taxonomies ) ) as $taxonomy ) {
 	if ( $terms ) {
 		foreach ( $terms as $term ) {
 			$wpdb->delete( $wpdb->term_taxonomy, array( 'term_taxonomy_id' => $term->term_taxonomy_id ) );
-			$wpdb->delete( $wpdb->terms, array( 'term_id' => $term->term_id ) );
+			// Prevent WC Terms from getting deleted.
+//			$wpdb->delete( $wpdb->terms, array( 'term_id' => $term->term_id ) );
 		}
 	}
 
 	// Delete Taxonomies
 	$wpdb->delete( $wpdb->term_taxonomy, array( 'taxonomy' => $taxonomy ), array( '%s' ) );
 }
+echo "\nAll Terms & Taxonomies deleted\n";
 
 /** Delete the Plugin Pages */
-$edd_created_pages = array( 'purchase_page', 'success_page', 'failure_page', 'purchase_history_page' );
-foreach ( $edd_created_pages as $p ) {
-	if ( isset( $edd_options[ $p ] ) ) {
-		wp_delete_post( $edd_options[ $p ], true );
-	}
-}
+//$edd_created_pages = array( 'purchase_page', 'success_page', 'failure_page', 'purchase_history_page' );
+//foreach ( $edd_created_pages as $p ) {
+//	if ( isset( $edd_options[ $p ] ) ) {
+//		wp_delete_post( $edd_options[ $p ], true );
+//	}
+//}
+//echo "\nAll Pages deleted\n";
 
 /** Delete all the Plugin Options */
 //delete_option( 'edd_settings' );

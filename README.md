@@ -24,7 +24,7 @@ From command-line interface (shell)
 
 ```
 cd /path/to/wordpress/wp-content/plugins/
-php index.php
+php migrate.php
 ```
 
 ### Reset EDD data

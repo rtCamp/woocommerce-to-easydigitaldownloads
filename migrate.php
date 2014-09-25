@@ -1,6 +1,36 @@
 <?php
 
 /**
+ * Extra Functions used in Script
+ */
+function wc_edd_insert_attachment( $old_attachment_id, $edd_product_id ) {
+	// $filename should be the path to a file in the upload directory.
+	$filename = get_attached_file( $old_attachment_id );
+
+	// The ID of the post this attachment is for.
+	$parent_post_id = $edd_product_id;
+
+	// Check the type of tile. We'll use this as the 'post_mime_type'.
+	$filetype = wp_check_filetype( basename( $filename ), null );
+
+	// Get the path to the upload directory.
+	$wp_upload_dir = wp_upload_dir();
+
+	// Prepare an array of post data for the attachment.
+	$attachment = array(
+		'guid'           => $wp_upload_dir['url'] . '/' . basename( $filename ),
+		'post_mime_type' => $filetype['type'],
+		'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $filename ) ),
+		'post_content'   => '',
+		'post_status'    => 'inherit'
+	);
+
+	// Insert the attachment.
+	$attach_id = wp_insert_attachment( $attachment, $filename, $parent_post_id );
+	return $attach_id;
+}
+
+/**
  * WordPress Load
  */
 
@@ -17,14 +47,10 @@ require_once( WP_LOAD_PATH . 'wp-load.php');
 echo "\nWP Loaded ...\n";
 
 /**
- * Detect plugin. For use on Front End only.
- */
-include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-
-/**
+ * Detect plugin.
  * Check for required Plugins
  */
-
+include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) || ! is_plugin_active( 'easy-digital-downloads/easy-digital-downloads.php' ) ) {
 	exit( 'WC & EDD Not Activated.' );
 }
@@ -32,19 +58,20 @@ echo "\nWC & EDD activated ...\n";
 
 /**
  * Step 1
- * Cat & Tag Migrate
+ * Category & Tag Migrate
  */
 
 $edd_cat_slug = 'download_category';
 $wc_cat_slug = 'product_cat';
 $wc_edd_cat_map = array();
 
-// Fetch Cat from WC
+// Fetch Category from WC
 $wc_cat_terms = get_terms( $wc_cat_slug, array( 'hide_empty' => false ) );
 echo "\nWC Cat fetched ...\n";
 
 foreach( $wc_cat_terms as $t ) {
 	$args = array();
+	// Check for Parent Term; if any
 	if( !empty( $t->parent ) && isset( $wc_edd_cat_map[ $t->parent ] ) ) {
 		$args[ 'parent' ] = $wc_edd_cat_map[ $t->parent ];
 	}
@@ -58,7 +85,7 @@ foreach( $wc_cat_terms as $t ) {
 		var_dump( $edd_term );
 	}
 }
-echo "\nEDD Cat migrated ...\n";
+echo "\nEDD Category migrated ...\n";
 
 $edd_tag_slug = 'download_tag';
 $wc_tag_slug = 'product_tag';
@@ -72,7 +99,7 @@ foreach( $wc_tag_terms as $t ) {
 	$edd_term = wp_insert_term( $t->name, $edd_tag_slug );
 
 	if( ! $edd_term instanceof WP_Error ) {
-		// maintain array of category mapping
+		// maintain array of tag mapping
 		$wc_edd_tag_map[ $t->term_id ] = $edd_term[ 'term_id' ];
 	} else {
 		echo "\n$t->name -- Tag not migrated because : \n";
@@ -89,6 +116,8 @@ echo "\nEDD Tag migrated ...\n";
 
 $wc_product_cpt = 'product';
 $edd_product_cpt = 'download';
+
+// Fetch WC Products
 $args = array(
 	'post_type' => $wc_product_cpt,
     'posts_per_page' => -1,
@@ -96,15 +125,19 @@ $args = array(
 );
 $wc_product_list = get_posts( $args );
 echo "\nWC Product fetched ...\n";
-$wc_edd_product_map = array();
 
+$wc_edd_product_map = array();
 global $wpdb;
+
 foreach( $wc_product_list as $p ) {
+
+	// WC Product Object
 	$product = get_product( $p );
 	echo "\nProduct - $p->ID\n";
 
+	// Fetch WC Categories
 	$wc_cat_terms = wp_get_post_terms( $p->ID, $wc_cat_slug );
-	echo "\nWC Product Cat fetched ...\n";
+	echo "\nWC Product Category fetched ...\n";
 	$edd_cat_terms = array();
 	if ( ! $wc_cat_terms instanceof WP_Error ) {
 		foreach( $wc_cat_terms as $t ) {
@@ -114,6 +147,7 @@ foreach( $wc_product_list as $p ) {
 		}
 	}
 
+	// Fetch WC Tags
 	$wc_tag_terms = wp_get_object_terms( $p->ID, $wc_tag_slug );
 	echo "\nWC Product Tag fetched ...\n";
 	$edd_tag_terms = array();
@@ -137,8 +171,8 @@ foreach( $wc_product_list as $p ) {
 	    'post_date_gmt' => $p->post_date_gmt,
 	    'comment_status' => $p->comment_status,
 	);
-
 	$edd_product_id = wp_insert_post( $data );
+
 	if( empty( $edd_product_id ) ) {
 		echo "\nFollowing Product not migrated : \n";
 		var_dump($p);
@@ -148,7 +182,7 @@ foreach( $wc_product_list as $p ) {
 	$wc_edd_product_map[ $p->ID ] = $edd_product_id;
 	echo "\nWC Product migrated ...\n";
 
-	// Assign Cat
+	// Assign Category
 	$terms = wp_set_object_terms( $edd_product_id, $edd_cat_terms, $edd_cat_slug );
 	if( $terms instanceof WP_Error ) {
 		echo "\nProduct Categories failed to assign ...\n";
@@ -168,35 +202,17 @@ foreach( $wc_product_list as $p ) {
 
 	// Featured Image
 	$wc_product_featured_image = get_post_thumbnail_id( $p->ID );
+
 	if( !empty( $wc_product_featured_image ) ) {
-		// $filename should be the path to a file in the upload directory.
-		$filename = get_attached_file( $wc_product_featured_image );
 
-		// The ID of the post this attachment is for.
-		$parent_post_id = $edd_product_id;
-
-		// Check the type of tile. We'll use this as the 'post_mime_type'.
-		$filetype = wp_check_filetype( basename( $filename ), null );
-
-		// Get the path to the upload directory.
-		$wp_upload_dir = wp_upload_dir();
-
-		// Prepare an array of post data for the attachment.
-		$attachment = array(
-			'guid'           => $wp_upload_dir['url'] . '/' . basename( $filename ),
-			'post_mime_type' => $filetype['type'],
-			'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $filename ) ),
-			'post_content'   => '',
-			'post_status'    => 'inherit'
-		);
-
-		// Insert the attachment.
-		$attach_id = wp_insert_attachment( $attachment, $filename, $parent_post_id );
+		// insert new attachment for new product
+		$attach_id = wc_edd_insert_attachment( $wc_product_featured_image, $edd_product_id );
 		if( empty( $attach_id ) ) {
 			echo "\nFeature Image could not be set for Product ...\n";
 			continue;
 		}
 
+		// Set featured image
 		$edd_product_fi_meta_id = set_post_thumbnail( $edd_product_id, $attach_id );
 		if( empty( $edd_product_fi_meta_id ) ) {
 			echo "\nFeature Image could not be set for Product ...\n";
@@ -209,29 +225,10 @@ foreach( $wc_product_list as $p ) {
 	$attachment_ids = $product->get_gallery_attachment_ids();
 	if ( $attachment_ids ) {
 		foreach ( $attachment_ids as $attachment_id ) {
-			// $filename should be the path to a file in the upload directory.
-			$filename = get_attached_file( $attachment_id );
 
-			// The ID of the post this attachment is for.
-			$parent_post_id = $edd_product_id;
+			// insert new attachment for new product
+			$attach_id = wc_edd_insert_attachment( $attachment_id, $edd_product_id );
 
-			// Check the type of tile. We'll use this as the 'post_mime_type'.
-			$filetype = wp_check_filetype( basename( $filename ), null );
-
-			// Get the path to the upload directory.
-			$wp_upload_dir = wp_upload_dir();
-
-			// Prepare an array of post data for the attachment.
-			$attachment = array(
-				'guid'           => $wp_upload_dir['url'] . '/' . basename( $filename ),
-				'post_mime_type' => $filetype['type'],
-				'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $filename ) ),
-				'post_content'   => '',
-				'post_status'    => 'inherit'
-			);
-
-			// Insert the attachment.
-			$attach_id = wp_insert_attachment( $attachment, $filename, $parent_post_id );
 			if( empty( $attach_id ) ) {
 				echo "\nGallery Image ID $attachment_id could not be set for Product ...\n";
 				continue;
@@ -241,13 +238,17 @@ foreach( $wc_product_list as $p ) {
 	}
 
 	// Downloadable Files
+
 	if( ! class_exists( 'WP_Http' ) ) {
 		include_once( ABSPATH . WPINC. '/class-http.php' );
 	}
+
 	$wc_dl_files = $product->get_files();
 	$edd_dl_files = array();
 	$edd_dl_files_slug = 'edd_download_files';
+
 	foreach( $wc_dl_files as $wc_file ) {
+		// To download file from the url
 		$file = new WP_Http();
 		$file = $file->request( $wc_file[ 'file' ] );
 		if( $file[ 'response' ][ 'code' ] != 200 ) {
@@ -256,6 +257,7 @@ foreach( $wc_product_list as $p ) {
 			continue;
 		}
 
+		// Upload downloaded url to WP Upload directory
 		$attachment = wp_upload_bits( basename( $wc_file[ 'file' ] ), null, $file['body'], date("Y-m", strtotime( $file[ 'headers' ][ 'last-modified' ] ) ) );
 		if( ! empty( $attachment[ 'error' ] ) ) {
 			echo "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
@@ -266,6 +268,7 @@ foreach( $wc_product_list as $p ) {
 		$filetype = wp_check_filetype( basename( $attachment[ 'file' ] ), null );
 		$wp_upload_dir = wp_upload_dir();
 
+		// Insert attachement for uploaded file
 		$postinfo = array(
 			'guid'           => $wp_upload_dir[ 'url' ] . '/' . basename( $attachment[ 'file' ] ),
 			'post_mime_type' => $filetype[ 'type' ],
@@ -281,6 +284,7 @@ foreach( $wc_product_list as $p ) {
 			continue;
 		}
 
+		// Prepare aray entry for downloaded file
 		$edd_dl_files[] = array(
 			'attachment_id' => $attach_id,
 		    'name' => basename( $attachment[ 'file' ] ),
@@ -288,24 +292,28 @@ foreach( $wc_product_list as $p ) {
 		);
 	}
 
+	// Store downloadable files into meta table
 	if( !empty( $edd_dl_files ) ) {
 		update_post_meta( $edd_product_id, $edd_dl_files_slug, $edd_dl_files );
 		echo "\nWC Downloadable Files migrated ...\n";
 	}
 
 	// Download Limit
+	// Take old value from WC meta and save it into EDD meta.
 	$edd_dl_limit_slug = '_edd_download_limit';
 	$wc_dl_limit_slug = '_download_limit';
 	update_post_meta( $edd_product_id, $edd_dl_limit_slug, get_post_meta( $p->ID, $wc_dl_limit_slug, true ) );
 	echo "\nWC Download Limit : " . get_post_meta( $p->ID, $wc_dl_limit_slug, true ) . " migrated ...\n";
 
 	// Price
+	// Take old value from WC meta and save it into EDD meta.
 	$edd_product_price_slug = 'edd_price';
 	$wc_product_price_slug = '_regular_price';
 	update_post_meta( $edd_product_id, $edd_product_price_slug, get_post_meta( $p->ID, $wc_product_price_slug, true ) );
 	echo "\nWC Product Price : " . get_post_meta( $p->ID, $wc_product_price_slug, true ) . " migrated ...\n";
 
 	// Sales
+	// Take old value from WC meta and save it into EDD meta.
 	$edd_product_sales_slug = '_edd_download_sales';
 	$wc_product_sales_slug = 'total_sales';
 	update_post_meta( $edd_product_id, $edd_product_sales_slug, get_post_meta( $p->ID, $wc_product_sales_slug, true ) );

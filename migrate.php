@@ -3,6 +3,15 @@
 /**
  * Extra Functions used in Script
  */
+
+/**
+ * Inserts Attachment with Parent Post as $edd_product_id
+ *
+ * @param $old_attachment_id
+ * @param $edd_product_id
+ *
+ * @return int
+ */
 function wc_edd_insert_attachment( $old_attachment_id, $edd_product_id ) {
 	// $filename should be the path to a file in the upload directory.
 	$filename = get_attached_file( $old_attachment_id );
@@ -127,7 +136,6 @@ $wc_product_list = get_posts( $args );
 echo "\nWC Product fetched ...\n";
 
 $wc_edd_product_map = array();
-global $wpdb;
 
 foreach( $wc_product_list as $p ) {
 
@@ -326,7 +334,69 @@ foreach( $wc_product_list as $p ) {
 /**
  * Coupons
  */
+$wc_coupon_cpt = 'shop_coupon';
+$edd_coupon_cpt = 'edd_discount';
 
+// Fetch WC Coupons
+$args = array(
+	'post_type' => $wc_coupon_cpt,
+	'posts_per_page' => -1,
+	'post_status' => 'any',
+);
+$wc_coupon_list = get_posts( $args );
+echo "\nWC Coupons fetched ...\n";
+
+$wc_edd_coupon_map = array();
+
+foreach( $wc_coupon_list as $c ) {
+
+	// WC Coupon Object
+	$code = $c->post_title;
+	$status = ( $c->post_status == 'publish' ) ? 'active' : 'inactive';
+	$coupon = new WC_Coupon( $code );
+	echo "\nCoupon - $c->ID\n";
+
+	$data = array(
+		'post_content' => $c->post_content,
+		'post_title' => $c->post_title,
+		'post_status' => $status,
+		'post_type' => $edd_coupon_cpt,
+		'post_author' => $c->post_author,
+		'post_parent' => $c->post_parent,
+		'post_excerpt' => $c->post_excerpt,
+		'post_date' => $c->post_date,
+		'post_date_gmt' => $c->post_date_gmt,
+		'comment_status' => $c->comment_status,
+	);
+	$edd_coupon_id = wp_insert_post( $data );
+
+	$expiry_date = get_post_meta( $c->ID, 'expiry_date', true );
+	$expiry_date = new DateTime( $expiry_date );
+	$expiry_date->add( new DateInterval( 'PT23H59M59S' ) );
+	$discount_type = get_post_meta( $c->ID, 'discount_type', true );
+	$data = array(
+		'name' => $c->post_excerpt,
+		'status' => $status,
+		'code' => $code,
+		// TODO - Update uses when migrating Orders
+		// 'uses' => {number},
+		'max' => get_post_meta( $c->ID, 'usage_limit', true ),
+		'amount' => get_post_meta( $c->ID, 'coupon_amount', true ),
+		'expiration' => $expiry_date->format('m/d/Y H:i:s'),
+	    'type' => ( strstr( $discount_type, 'percent' ) == FALSE ) ? 'flat' : 'percent',
+	    'min_price' => get_post_meta( $c->ID, 'minimum_amount', true ),
+	    'products' => array_map( 'intval', explode( ',', get_post_meta( $c->ID, 'product_ids', true ) ) ),
+	    'product_condition' => 'any',
+	    'excluded-products' => array_map( 'intval', explode( ',', get_post_meta( $c->ID, 'exclude_product_ids', true ) ) ),
+	    'not_global' => true,
+	    'use_once' => false,
+	);
+	edd_store_discount( $data, $edd_coupon_id );
+
+	$wc_edd_coupon_map[ $c->ID ] = $edd_coupon_id;
+	echo "\nWC Coupon migrated ...\n";
+
+}
 
 /**
  * Orders

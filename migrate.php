@@ -190,6 +190,8 @@ foreach( $wc_product_list as $p ) {
 	$wc_edd_product_map[ $p->ID ] = $edd_product_id;
 	echo "\nWC Product migrated ...\n";
 
+	update_post_meta( $edd_product_id, '_wc_product_id', $p->ID );
+
 	// Assign Category
 	$terms = wp_set_object_terms( $edd_product_id, $edd_cat_terms, $edd_cat_slug );
 	if( $terms instanceof WP_Error ) {
@@ -332,7 +334,8 @@ foreach( $wc_product_list as $p ) {
 }
 
 /**
- * Coupons
+ * Step 3
+ * Coupons Migrate
  */
 $wc_coupon_cpt = 'shop_coupon';
 $edd_coupon_cpt = 'edd_discount';
@@ -396,8 +399,215 @@ foreach( $wc_coupon_list as $c ) {
 	$wc_edd_coupon_map[ $c->ID ] = $edd_coupon_id;
 	echo "\nWC Coupon migrated ...\n";
 
+	update_post_meta( $edd_coupon_id, '_wc_coupon_id', $c->ID );
+
 }
 
 /**
- * Orders
+ * Step 4
+ * Orders Migrate
+ */
+$wc_order_cpt = 'shop_order';
+$edd_order_cpt = 'edd_payment';
+
+// Fetch WC Coupons
+$args = array(
+	'post_type' => $wc_order_cpt,
+	'posts_per_page' => -1,
+	'post_status' => 'any',
+    'orderby' => 'date',
+    'order' => 'ASC',
+);
+$wc_order_list = get_posts( $args );
+echo "\nWC Orders fetched ...\n";
+
+$wc_edd_order_map = array();
+
+foreach( $wc_order_list as $o ) {
+
+	// WC Order Object
+	$order = new WC_Order( $o );
+	echo "\nOrder - $o->ID\n";
+
+	switch( $order->post_status ) {
+		case 'wc-pending':
+		case 'wc-processing':
+		case 'wc-on-hold':
+			$status = 'pending';
+			break;
+		case 'wc-completed':
+			$status = 'publish';
+			break;
+		case 'wc-cancelled':
+			$status = 'abandoned';
+			break;
+		case 'wc-refunded':
+			$status = 'refunded';
+			break;
+		case 'wc-failed':
+			$status = 'failed';
+			break;
+		default:
+			$status = 'pending';
+			break;
+	}
+
+	echo "\nStatus : $status\n";
+
+	$break_loop = false;
+
+	$email = get_post_meta( $o->ID, '_billing_email', true );
+	$user = get_user_by( 'email', $email );
+	if( ! $user ) {
+		$first_name = get_post_meta( $o->ID, '_billing_first_name', true );
+		$last_name = get_post_meta( $o->ID, '_billing_last_name', true );
+		$password = wp_generate_password();
+		$user_id = wp_insert_user(
+			array(
+				'user_email' 	=> sanitize_email( $email ),
+				'user_login' 	=> sanitize_email( $email ),
+				'user_pass'		=> $password,
+				'first_name'	=> sanitize_text_field( $first_name ),
+				'last_name' 	=> sanitize_text_field( $last_name ),
+			)
+		);
+	} else {
+		$user_id = $user->ID;
+		$email = $user->user_email;
+	}
+
+	if( $user_id instanceof WP_Error ) {
+		echo "\nUser could not be created. Invalid Email. So order could not be migrated ...\n";
+		continue;
+	}
+
+	$downloads = array();
+	$cart_details = array();
+	$wc_items = $order->get_items();
+
+	$wc_coupon = $order->get_used_coupons();
+	if( ! empty( $wc_coupon ) ) {
+		$wc_coupon = new WC_Coupon( $wc_coupon[0] );
+	} else {
+		$wc_coupon = null;
+	}
+
+	foreach( $wc_items as $item ) {
+		$product = $order->get_product_from_item( $item );
+		if( ! isset( $wc_edd_product_map[ $product->id ] ) || empty( $wc_edd_product_map[ $product->id ] ) ) {
+			echo "\nEDD Product Not available for this WC Product.\n";
+			$break_loop = true;
+			break;
+		}
+		$download = edd_get_download( $wc_edd_product_map[ $product->id ] );
+		$item_number = array(
+			'id' => $download->ID,
+		    'options' => array(),
+		    'quantity' => $item[ 'qty' ],
+		);
+		$downloads[] = $item_number;
+
+		$_wc_cart_disc_meta = get_post_meta( $order->id, '_cart_discount', true );
+		$_wc_cart_disc_meta = floatval( $_wc_cart_disc_meta );
+
+		$_wc_order_disc_meta = get_post_meta( $order->id, '_cart_discount', true );
+		$_wc_order_disc_meta = floatval( $_wc_order_disc_meta );
+
+		if( ! empty( $_wc_cart_disc_meta ) ) {
+			$item_price = $item[ 'line_subtotal' ];
+			$discount = ( floatval( $item[ 'line_subtotal' ] ) - floatval( $item[ 'line_total' ] ) ) * $item[ 'qty' ];
+			$subtotal = ( $item[ 'line_subtotal' ] * $item[ 'qty' ] ) - $discount;
+			$price = $subtotal;  // $item[ 'line_total' ]
+		} else {
+			$item_price = $item[ 'line_subtotal' ];
+			$discount = $coupon->get_discount_amount( $item_price, $item );
+			$subtotal = ( $item[ 'line_subtotal' ] * $item[ 'qty' ] ) - $discount;
+			$price = $subtotal;  // $item[ 'line_total' ]
+		}
+
+		echo "=======================================================\n";
+		echo "line_subtotal/item_price : ".$item_price."\n";
+		echo "line_total : ".$item[ 'line_total' ]."\n";
+		echo "discount : ".$discount."\n";
+		echo "subtotal : ".$subtotal."\n";
+		echo "price : ".$price."\n";
+		echo "=======================================================\n";
+
+		$cart_details[] = array(
+			'id'          => $download->ID,
+			'name'        => $download->post_title,
+			'item_number' => $item_number,
+			'item_price'  => $item_price,
+			'subtotal'    => $subtotal,
+			'price'       => $price,
+			'discount'    => $discount,
+			'fees'        => array(),
+			'tax'         => 0,
+			'quantity'    => $item[ 'qty' ],
+		);
+	}
+
+	if( $break_loop ) {
+		echo "\nWC Order could not be migrated ...\n";
+		continue;
+	}
+
+	if( empty( $downloads ) || empty( $cart_details ) ) {
+		echo "\nNo Products found. So order not migrated ...\n";
+		continue;
+	}
+
+	$data = array(
+		'currency' => 'USD',
+		'downloads' => $downloads,
+		'cart_details' => $cart_details,
+		'price' => get_post_meta( $order->id, '_order_total', true ),
+		'purchase_key' => get_post_meta( $order->id, '_order_key', true ),
+		'user_info' => array(
+			'id' => $user_id,
+			'email' => $email,
+			'first_name' => get_post_meta( $order->id, '_billing_first_name', true ),
+		    'last_name' => get_post_meta( $order->id, '_billing_last_name', true ),
+			'discount' => ( ! empty( $wc_coupon ) && isset( $wc_edd_coupon_map[ $wc_coupon->id ] ) && ! empty( $wc_edd_coupon_map[ $wc_coupon->id ] ) ) ? $wc_coupon->code : '',
+		    'address' => array(
+			    'line1' => get_post_meta( $order->id, '_billing_address_1', true ),
+				'line2' => get_post_meta( $order->id, '_billing_address_2', true ),
+				'city' => get_post_meta( $order->id, '_billing_city', true ),
+				'zip' => get_post_meta( $order->id, '_billing_postcode', true ),
+				'country' => get_post_meta( $order->id, '_billing_country', true ),
+				'state' => get_post_meta( $order->id, '_billing_state', true ),
+		    ),
+		),
+		'user_id' => $user_id,
+	    'user_email' => $email,
+	    'status' => 'pending',
+	    'parent' => $o->post_parent,
+	    'post_date' => $o->post_date,
+	    'gateway' => get_post_meta( $order->id, '_payment_method', true ),
+	);
+
+	$payment_id = edd_insert_payment( $data );
+	remove_action( 'edd_update_payment_status', 'edd_trigger_purchase_receipt', 10 );
+	remove_action( 'edd_complete_purchase', 'edd_trigger_purchase_receipt', 999 );
+	edd_update_payment_status( $payment_id, $status );
+
+	$wc_edd_order_map[ $o->ID ] = $payment_id;
+
+	update_post_meta( $payment_id, '_edd_payment_user_ip', get_post_meta( $order->id, '_customer_ip_address', true ) );
+	update_post_meta( $payment_id, '_wc_order_key', get_post_meta( $order->id, '_order_key', true ) );
+	update_post_meta( $payment_id, '_edd_payment_mode', 'live' );
+	update_post_meta( $payment_id, '_edd_completed_date', get_post_meta( $order->id, '_completed_date', true ) );
+
+	update_post_meta( $payment_id, '_wc_order_id', $o->ID );
+}
+
+/**
+ * Step 5
+ * Sales Logs
+ */
+
+
+/**
+ * Step 7
+ * Download Logs
  */

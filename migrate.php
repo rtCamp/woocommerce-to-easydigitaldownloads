@@ -278,7 +278,7 @@ foreach( $wc_product_list as $p ) {
 		$filetype = wp_check_filetype( basename( $attachment[ 'file' ] ), null );
 		$wp_upload_dir = wp_upload_dir();
 
-		// Insert attachement for uploaded file
+		// Insert attachment for uploaded file
 		$postinfo = array(
 			'guid'           => $wp_upload_dir[ 'url' ] . '/' . basename( $attachment[ 'file' ] ),
 			'post_mime_type' => $filetype[ 'type' ],
@@ -373,6 +373,7 @@ foreach( $wc_coupon_list as $c ) {
 	);
 	$edd_coupon_id = wp_insert_post( $data );
 
+	// Adjust according to EDD Format
 	$expiry_date = get_post_meta( $c->ID, 'expiry_date', true );
 	$expiry_date = new DateTime( $expiry_date );
 	$expiry_date->add( new DateInterval( 'PT23H59M59S' ) );
@@ -429,6 +430,7 @@ foreach( $wc_order_list as $o ) {
 	$order = new WC_Order( $o );
 	echo "\nOrder - $o->ID\n";
 
+	// Process Order Status
 	switch( $order->post_status ) {
 		case 'wc-pending':
 		case 'wc-processing':
@@ -456,6 +458,7 @@ foreach( $wc_order_list as $o ) {
 
 	$break_loop = false;
 
+	// Decide the customer from email used. If new then create new.
 	$email = get_post_meta( $o->ID, '_billing_email', true );
 	$user = get_user_by( 'email', $email );
 	if( ! $user ) {
@@ -481,10 +484,12 @@ foreach( $wc_order_list as $o ) {
 		continue;
 	}
 
+	// Prepare Products array & cart array for the order.
 	$downloads = array();
 	$cart_details = array();
 	$wc_items = $order->get_items();
 
+	// Decide whether any coupon is used for discount or not.
 	$wc_coupon = $order->get_used_coupons();
 	if( ! empty( $wc_coupon ) ) {
 		$wc_coupon = new WC_Coupon( $wc_coupon[0] );
@@ -492,6 +497,7 @@ foreach( $wc_order_list as $o ) {
 		$wc_coupon = null;
 	}
 
+	// Line Items from the WC Order
 	foreach( $wc_items as $item ) {
 		$product = $order->get_product_from_item( $item );
 		if( ! isset( $wc_edd_product_map[ $product->id ] ) || empty( $wc_edd_product_map[ $product->id ] ) ) {
@@ -510,9 +516,10 @@ foreach( $wc_order_list as $o ) {
 		$_wc_cart_disc_meta = get_post_meta( $order->id, '_cart_discount', true );
 		$_wc_cart_disc_meta = floatval( $_wc_cart_disc_meta );
 
-		$_wc_order_disc_meta = get_post_meta( $order->id, '_cart_discount', true );
+		$_wc_order_disc_meta = get_post_meta( $order->id, '_order_discount', true );
 		$_wc_order_disc_meta = floatval( $_wc_order_disc_meta );
 
+		// Cart Discount Logic for migration - Two Types : 1. Cart Discount 2. Product Discount
 		if( ! empty( $_wc_cart_disc_meta ) ) {
 			$item_price = $item[ 'line_subtotal' ];
 			$discount = ( floatval( $item[ 'line_subtotal' ] ) - floatval( $item[ 'line_total' ] ) ) * $item[ 'qty' ];
@@ -547,11 +554,13 @@ foreach( $wc_order_list as $o ) {
 		);
 	}
 
+	// If Products & Cart array is not prepared ( loop broken in between ) then skip the order.
 	if( $break_loop ) {
 		echo "\nWC Order could not be migrated ...\n";
 		continue;
 	}
 
+	// If no products found in the order then also skip the order.
 	if( empty( $downloads ) || empty( $cart_details ) ) {
 		echo "\nNo Products found. So order not migrated ...\n";
 		continue;
@@ -592,18 +601,54 @@ foreach( $wc_order_list as $o ) {
 	edd_update_payment_status( $payment_id, $status );
 
 	$wc_edd_order_map[ $o->ID ] = $payment_id;
+	echo "\nWC Order migrated ...\n";
 
+	// Update relavent data.
 	update_post_meta( $payment_id, '_edd_payment_user_ip', get_post_meta( $order->id, '_customer_ip_address', true ) );
 	update_post_meta( $payment_id, '_wc_order_key', get_post_meta( $order->id, '_order_key', true ) );
 	update_post_meta( $payment_id, '_edd_payment_mode', 'live' );
 	update_post_meta( $payment_id, '_edd_completed_date', get_post_meta( $order->id, '_completed_date', true ) );
 
 	update_post_meta( $payment_id, '_wc_order_id', $o->ID );
+
+	// Order Notes
+	$args = array(
+		'post_id' => $order->id,
+		'approve' => 'approve',
+		'type' => ''
+	);
+	$wc_notes = get_comments( $args );
+	echo "\nOrder Notes fetched ...\n";
+	foreach($wc_notes as $note) {
+
+		echo "\nWC Order Note - $note->comment_ID\n";
+
+		$edd_note_id = edd_insert_payment_note( $payment_id, $note->comment_content );
+
+		// Update relevant data from old comment
+		wp_update_comment( array(
+			'comment_ID' => $edd_note_id,
+			'comment_date' => $note->comment_date,
+			'comment_date_gmt' => $note->comment_date_gmt,
+			'comment_author' => $note->comment_author,
+			'comment_author_email' => $note->comment_author_email,
+		) );
+		update_comment_meta( $edd_note_id, '_wc_order_note_id', $note->comment_ID );
+
+		echo "\nWC Order Note migrated ...\n";
+	}
 }
 
 /**
  * Step 5
+ * Order Notes
+ * - This is covered up in Order Migration
+ */
+
+/**
+ * Step 6
  * Sales Logs
+ * - This is covered up in Order Migration.
  */
 
 

@@ -316,11 +316,16 @@ foreach( $wc_product_list as $p ) {
 	$edd_dl_files_slug = 'edd_download_files';
 
 	foreach( $wc_dl_files as $wc_file ) {
+
+		$temp_log_str = "\nOld File : ".$wc_file[ 'file' ]."\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+
 		// To download file from the url
 		$file = new WP_Http();
 		$file = $file->request( $wc_file[ 'file' ] );
 		if( $file[ 'response' ][ 'code' ] != 200 ) {
-			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
+			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ... because old file could not be downloaded\n";
 			$log_str .= $temp_log_str;
 			echo $temp_log_str;
 			$temp_log_str = var_export( $wc_file[ 'file' ], true );
@@ -332,7 +337,7 @@ foreach( $wc_product_list as $p ) {
 		// Upload downloaded url to WP Upload directory
 		$attachment = wp_upload_bits( basename( $wc_file[ 'file' ] ), null, $file['body'], date("Y-m", strtotime( $file[ 'headers' ][ 'last-modified' ] ) ) );
 		if( ! empty( $attachment[ 'error' ] ) ) {
-			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
+			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ... because new file could not be uploaded.\n";
 			$log_str .= $temp_log_str;
 			echo $temp_log_str;
 			$temp_log_str = var_export( $wc_file[ 'file' ], true );
@@ -764,7 +769,7 @@ foreach( $wc_order_list as $o ) {
 }
 
 echo "\nMIGRATION COMPLETE !!! PLEASE CHECK THE LOG FILE IN THE SAME FOLDER !!!\n";
-file_put_contents( "wc_edd_migration.log" . current_time( 'mysql' ), $log_str, FILE_APPEND );
+file_put_contents( "wc_edd_migration." . current_time( 'mysql' ) . ".log", $log_str, FILE_APPEND );
 
 /**
  * Step 5

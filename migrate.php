@@ -53,7 +53,11 @@ if ( ! defined( 'WP_LOAD_PATH' ) ) {
 
 require_once( WP_LOAD_PATH . 'wp-load.php');
 
-echo "\nWP Loaded ...\n";
+$log_str = '';
+
+$temp_log_str = "\nWP Loaded ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 /**
  * Detect plugin.
@@ -63,7 +67,9 @@ include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) || ! is_plugin_active( 'easy-digital-downloads/easy-digital-downloads.php' ) ) {
 	exit( 'WC & EDD Not Activated.' );
 }
-echo "\nWC & EDD activated ...\n";
+$temp_log_str = "\nWC & EDD activated ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 /**
  * Step 1
@@ -76,7 +82,9 @@ $wc_edd_cat_map = array();
 
 // Fetch Category from WC
 $wc_cat_terms = get_terms( $wc_cat_slug, array( 'hide_empty' => false ) );
-echo "\nWC Cat fetched ...\n";
+$temp_log_str = "\nWC Cat fetched ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 foreach( $wc_cat_terms as $t ) {
 	$args = array();
@@ -90,11 +98,17 @@ foreach( $wc_cat_terms as $t ) {
 		// maintain array of category mapping
 		$wc_edd_cat_map[ $t->term_id ] = $edd_term[ 'term_id' ];
 	} else {
-		echo "\n$t->name -- Category not migrated because : \n";
-		var_dump( $edd_term );
+		$temp_log_str = "\n$t->name -- Category not migrated because : \n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = var_export($edd_term, true);
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 	}
 }
-echo "\nEDD Category migrated ...\n";
+$temp_log_str = "\nEDD Category migrated ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 $edd_tag_slug = 'download_tag';
 $wc_tag_slug = 'product_tag';
@@ -102,7 +116,9 @@ $wc_edd_tag_map = array();
 
 // Fetch Tag from WC
 $wc_tag_terms = get_terms( $wc_tag_slug, array( 'hide_empty' => false ) );
-echo "\nWC Tag fetched ...\n";
+$temp_log_str = "\nWC Tag fetched ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 foreach( $wc_tag_terms as $t ) {
 	$edd_term = wp_insert_term( $t->name, $edd_tag_slug );
@@ -111,11 +127,17 @@ foreach( $wc_tag_terms as $t ) {
 		// maintain array of tag mapping
 		$wc_edd_tag_map[ $t->term_id ] = $edd_term[ 'term_id' ];
 	} else {
-		echo "\n$t->name -- Tag not migrated because : \n";
-		var_dump( $edd_term );
+		$temp_log_str = "\n$t->name -- Tag not migrated because : \n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = var_export( $edd_term, true );
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 	}
 }
-echo "\nEDD Tag migrated ...\n";
+$temp_log_str = "\nEDD Tag migrated ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 
 /**
@@ -133,7 +155,9 @@ $args = array(
     'post_status' => 'any',
 );
 $wc_product_list = get_posts( $args );
-echo "\nWC Product fetched ...\n";
+$temp_log_str = "\nWC Product fetched ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 $wc_edd_product_map = array();
 
@@ -141,11 +165,15 @@ foreach( $wc_product_list as $p ) {
 
 	// WC Product Object
 	$product = get_product( $p );
-	echo "\nProduct - $p->ID\n";
+	$temp_log_str = "\nProduct - $p->ID\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Fetch WC Categories
 	$wc_cat_terms = wp_get_post_terms( $p->ID, $wc_cat_slug );
-	echo "\nWC Product Category fetched ...\n";
+	$temp_log_str = "\nWC Product Category fetched ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 	$edd_cat_terms = array();
 	if ( ! $wc_cat_terms instanceof WP_Error ) {
 		foreach( $wc_cat_terms as $t ) {
@@ -157,7 +185,9 @@ foreach( $wc_product_list as $p ) {
 
 	// Fetch WC Tags
 	$wc_tag_terms = wp_get_object_terms( $p->ID, $wc_tag_slug );
-	echo "\nWC Product Tag fetched ...\n";
+	$temp_log_str = "\nWC Product Tag fetched ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 	$edd_tag_terms = array();
 	if ( ! $wc_tag_terms instanceof WP_Error ) {
 		foreach( $wc_tag_terms as $t ) {
@@ -182,33 +212,51 @@ foreach( $wc_product_list as $p ) {
 	$edd_product_id = wp_insert_post( $data );
 
 	if( empty( $edd_product_id ) ) {
-		echo "\nFollowing Product not migrated : \n";
-		var_dump($p);
+		$temp_log_str = "\nFollowing Product not migrated : \n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = var_export( $p, true );
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 		continue;
 	}
 
 	$wc_edd_product_map[ $p->ID ] = $edd_product_id;
-	echo "\nWC Product migrated ...\n";
+	$temp_log_str = "\nWC Product migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	update_post_meta( $edd_product_id, '_wc_product_id', $p->ID );
 
 	// Assign Category
 	$terms = wp_set_object_terms( $edd_product_id, $edd_cat_terms, $edd_cat_slug );
 	if( $terms instanceof WP_Error ) {
-		echo "\nProduct Categories failed to assign ...\n";
-		var_dump($terms);
+		$temp_log_str = "\nProduct Categories failed to assign ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = var_export( $terms, true );
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 		continue;
 	}
-	echo "\nWC Category migrated ...\n";
+	$temp_log_str = "\nWC Category migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Assign Tag
 	$terms = wp_set_object_terms( $edd_product_id, $edd_tag_terms, $edd_tag_slug );
 	if( $terms instanceof WP_Error ) {
-		echo "\nProduct Tags failed to assign ...\n";
-		var_dump($terms);
+		$temp_log_str = "\nProduct Tags failed to assign ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = var_export( $terms, true );
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 		continue;
 	}
-	echo "\nWC Tag migrated ...\n";
+	$temp_log_str = "\nWC Tag migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Featured Image
 	$wc_product_featured_image = get_post_thumbnail_id( $p->ID );
@@ -218,18 +266,24 @@ foreach( $wc_product_list as $p ) {
 		// insert new attachment for new product
 		$attach_id = wc_edd_insert_attachment( $wc_product_featured_image, $edd_product_id );
 		if( empty( $attach_id ) ) {
-			echo "\nFeature Image could not be set for Product ...\n";
+			$temp_log_str = "\nFeature Image could not be set for Product ...\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
 			continue;
 		}
 
 		// Set featured image
 		$edd_product_fi_meta_id = set_post_thumbnail( $edd_product_id, $attach_id );
 		if( empty( $edd_product_fi_meta_id ) ) {
-			echo "\nFeature Image could not be set for Product ...\n";
+			$temp_log_str = "\nFeature Image could not be set for Product ...\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
 			continue;
 		}
 	}
-	echo "\nWC Featured Image migrated ...\n";
+	$temp_log_str = "\nWC Featured Image migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Product Gallery
 	$attachment_ids = $product->get_gallery_attachment_ids();
@@ -240,11 +294,15 @@ foreach( $wc_product_list as $p ) {
 			$attach_id = wc_edd_insert_attachment( $attachment_id, $edd_product_id );
 
 			if( empty( $attach_id ) ) {
-				echo "\nGallery Image ID $attachment_id could not be set for Product ...\n";
+				$temp_log_str = "\nGallery Image ID $attachment_id could not be set for Product ...\n";
+				$log_str .= $temp_log_str;
+				echo $temp_log_str;
 				continue;
 			}
 		}
-		echo "\nWC Gallery migrated ...\n";
+		$temp_log_str = "\nWC Gallery migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 	}
 
 	// Downloadable Files
@@ -262,16 +320,24 @@ foreach( $wc_product_list as $p ) {
 		$file = new WP_Http();
 		$file = $file->request( $wc_file[ 'file' ] );
 		if( $file[ 'response' ][ 'code' ] != 200 ) {
-			echo "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
-			var_dump( $wc_file[ 'file' ] );
+			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
+			$temp_log_str = var_export( $wc_file[ 'file' ], true );
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
 			continue;
 		}
 
 		// Upload downloaded url to WP Upload directory
 		$attachment = wp_upload_bits( basename( $wc_file[ 'file' ] ), null, $file['body'], date("Y-m", strtotime( $file[ 'headers' ][ 'last-modified' ] ) ) );
 		if( ! empty( $attachment[ 'error' ] ) ) {
-			echo "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
-			var_dump( $wc_file[ 'file' ] );
+			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
+			$temp_log_str = var_export( $wc_file[ 'file' ], true );
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
 			continue;
 		}
 
@@ -289,8 +355,12 @@ foreach( $wc_product_list as $p ) {
 		$filename = $attachment[ 'file' ];
 		$attach_id = wp_insert_attachment( $postinfo, $filename, $edd_product_id );
 		if( empty( $attach_id ) ) {
-			echo "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
-			var_dump( $wc_file[ 'file' ] );
+			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
+			$temp_log_str = var_export( $wc_file[ 'file' ], true );
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
 			continue;
 		}
 
@@ -305,7 +375,9 @@ foreach( $wc_product_list as $p ) {
 	// Store downloadable files into meta table
 	if( !empty( $edd_dl_files ) ) {
 		update_post_meta( $edd_product_id, $edd_dl_files_slug, $edd_dl_files );
-		echo "\nWC Downloadable Files migrated ...\n";
+		$temp_log_str = "\nWC Downloadable Files migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 	}
 
 	// Download Limit
@@ -313,21 +385,27 @@ foreach( $wc_product_list as $p ) {
 	$edd_dl_limit_slug = '_edd_download_limit';
 	$wc_dl_limit_slug = '_download_limit';
 	update_post_meta( $edd_product_id, $edd_dl_limit_slug, get_post_meta( $p->ID, $wc_dl_limit_slug, true ) );
-	echo "\nWC Download Limit : " . get_post_meta( $p->ID, $wc_dl_limit_slug, true ) . " migrated ...\n";
+	$temp_log_str = "\nWC Download Limit : " . get_post_meta( $p->ID, $wc_dl_limit_slug, true ) . " migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Price
 	// Take old value from WC meta and save it into EDD meta.
 	$edd_product_price_slug = 'edd_price';
 	$wc_product_price_slug = '_regular_price';
 	update_post_meta( $edd_product_id, $edd_product_price_slug, get_post_meta( $p->ID, $wc_product_price_slug, true ) );
-	echo "\nWC Product Price : " . get_post_meta( $p->ID, $wc_product_price_slug, true ) . " migrated ...\n";
+	$temp_log_str = "\nWC Product Price : " . get_post_meta( $p->ID, $wc_product_price_slug, true ) . " migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Sales
 	// Take old value from WC meta and save it into EDD meta.
 	$edd_product_sales_slug = '_edd_download_sales';
 	$wc_product_sales_slug = 'total_sales';
 	update_post_meta( $edd_product_id, $edd_product_sales_slug, get_post_meta( $p->ID, $wc_product_sales_slug, true ) );
-	echo "\nWC Product Total Sales : " . get_post_meta( $p->ID, $wc_product_sales_slug, true ) . " migrated ...\n";
+	$temp_log_str = "\nWC Product Total Sales : " . get_post_meta( $p->ID, $wc_product_sales_slug, true ) . " migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Earnings
 	// TODO - Do it when migrating orders i.e. Payment History
@@ -347,7 +425,9 @@ $args = array(
 	'post_status' => 'any',
 );
 $wc_coupon_list = get_posts( $args );
-echo "\nWC Coupons fetched ...\n";
+$temp_log_str = "\nWC Coupons fetched ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 $wc_edd_coupon_map = array();
 
@@ -357,7 +437,9 @@ foreach( $wc_coupon_list as $c ) {
 	$code = $c->post_title;
 	$status = ( $c->post_status == 'publish' ) ? 'active' : 'inactive';
 	$coupon = new WC_Coupon( $code );
-	echo "\nCoupon - $c->ID\n";
+	$temp_log_str = "\nCoupon - $c->ID\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	$data = array(
 		'post_content' => $c->post_content,
@@ -398,7 +480,9 @@ foreach( $wc_coupon_list as $c ) {
 	edd_store_discount( $data, $edd_coupon_id );
 
 	$wc_edd_coupon_map[ $c->ID ] = $edd_coupon_id;
-	echo "\nWC Coupon migrated ...\n";
+	$temp_log_str = "\nWC Coupon migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	update_post_meta( $edd_coupon_id, '_wc_coupon_id', $c->ID );
 
@@ -420,7 +504,9 @@ $args = array(
     'order' => 'ASC',
 );
 $wc_order_list = get_posts( $args );
-echo "\nWC Orders fetched ...\n";
+$temp_log_str = "\nWC Orders fetched ...\n";
+$log_str .= $temp_log_str;
+echo $temp_log_str;
 
 $wc_edd_order_map = array();
 
@@ -428,7 +514,9 @@ foreach( $wc_order_list as $o ) {
 
 	// WC Order Object
 	$order = new WC_Order( $o );
-	echo "\nOrder - $o->ID\n";
+	$temp_log_str = "\nOrder - $o->ID\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Process Order Status
 	switch( $order->post_status ) {
@@ -454,7 +542,9 @@ foreach( $wc_order_list as $o ) {
 			break;
 	}
 
-	echo "\nStatus : $status\n";
+	$temp_log_str = "\nStatus : $status\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	$break_loop = false;
 
@@ -480,7 +570,9 @@ foreach( $wc_order_list as $o ) {
 	}
 
 	if( $user_id instanceof WP_Error ) {
-		echo "\nUser could not be created. Invalid Email. So order could not be migrated ...\n";
+		$temp_log_str = "\nUser could not be created. Invalid Email. So order could not be migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 		continue;
 	}
 
@@ -505,7 +597,9 @@ foreach( $wc_order_list as $o ) {
 		$item[ 'data' ] = $product;
 
 		if( ! isset( $wc_edd_product_map[ $product->id ] ) || empty( $wc_edd_product_map[ $product->id ] ) ) {
-			echo "\nEDD Product Not available for this WC Product.\n";
+			$temp_log_str = "\nEDD Product Not available for this WC Product.\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
 			$break_loop = true;
 			break;
 		}
@@ -536,13 +630,27 @@ foreach( $wc_order_list as $o ) {
 			$price = $subtotal;  // $item[ 'line_total' ]
 		}
 
-		echo "=======================================================\n";
-		echo "line_subtotal/item_price : ".$item_price."\n";
-		echo "line_total : ".$item[ 'line_total' ]."\n";
-		echo "discount : ".$discount."\n";
-		echo "subtotal : ".$subtotal."\n";
-		echo "price : ".$price."\n";
-		echo "=======================================================\n";
+		$temp_log_str = "=======================================================\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = "line_subtotal/item_price : ".$item_price."\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = "line_total : ".$item[ 'line_total' ]."\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = "discount : ".$discount."\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = "subtotal : ".$subtotal."\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = "price : ".$price."\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+		$temp_log_str = "=======================================================\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 
 		$cart_details[] = array(
 			'id'          => $download->ID,
@@ -560,13 +668,17 @@ foreach( $wc_order_list as $o ) {
 
 	// If Products & Cart array is not prepared ( loop broken in between ) then skip the order.
 	if( $break_loop ) {
-		echo "\nWC Order could not be migrated ...\n";
+		$temp_log_str = "\nWC Order could not be migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 		continue;
 	}
 
 	// If no products found in the order then also skip the order.
 	if( empty( $downloads ) || empty( $cart_details ) ) {
-		echo "\nNo Products found. So order not migrated ...\n";
+		$temp_log_str = "\nNo Products found. So order not migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 		continue;
 	}
 
@@ -605,7 +717,9 @@ foreach( $wc_order_list as $o ) {
 	edd_update_payment_status( $payment_id, $status );
 
 	$wc_edd_order_map[ $o->ID ] = $payment_id;
-	echo "\nWC Order migrated ...\n";
+	$temp_log_str = "\nWC Order migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 
 	// Update relavent data.
 	update_post_meta( $payment_id, '_edd_payment_user_ip', get_post_meta( $order->id, '_customer_ip_address', true ) );
@@ -622,10 +736,14 @@ foreach( $wc_order_list as $o ) {
 		'type' => ''
 	);
 	$wc_notes = get_comments( $args );
-	echo "\nOrder Notes fetched ...\n";
+	$temp_log_str = "\nOrder Notes fetched ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
 	foreach($wc_notes as $note) {
 
-		echo "\nWC Order Note - $note->comment_ID\n";
+		$temp_log_str = "\nWC Order Note - $note->comment_ID\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 
 		$edd_note_id = edd_insert_payment_note( $payment_id, $note->comment_content );
 
@@ -639,9 +757,14 @@ foreach( $wc_order_list as $o ) {
 		) );
 		update_comment_meta( $edd_note_id, '_wc_order_note_id', $note->comment_ID );
 
-		echo "\nWC Order Note migrated ...\n";
+		$temp_log_str = "\nWC Order Note migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 	}
 }
+
+echo "\nMIGRATION COMPLETE !!! PLEASE CHECK THE LOG FILE IN THE SAME FOLDER !!!\n";
+file_put_contents( "wc_edd_migration.log" . current_time( 'mysql' ), $log_str, FILE_APPEND );
 
 /**
  * Step 5

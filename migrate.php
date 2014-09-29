@@ -500,6 +500,10 @@ foreach( $wc_order_list as $o ) {
 	// Line Items from the WC Order
 	foreach( $wc_items as $item ) {
 		$product = $order->get_product_from_item( $item );
+
+		$item[ 'quantity' ] = $item[ 'qty' ];
+		$item[ 'data' ] = $product;
+
 		if( ! isset( $wc_edd_product_map[ $product->id ] ) || empty( $wc_edd_product_map[ $product->id ] ) ) {
 			echo "\nEDD Product Not available for this WC Product.\n";
 			$break_loop = true;

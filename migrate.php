@@ -324,6 +324,9 @@ foreach( $wc_product_list as $p ) {
 		// To download file from the url
 		$file = new WP_Http();
 		$file = $file->request( $wc_file[ 'file' ] );
+		$temp_log_str = var_export( $file, true );
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
 		if( $file[ 'response' ][ 'code' ] != 200 ) {
 			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ... because old file could not be downloaded\n";
 			$log_str .= $temp_log_str;

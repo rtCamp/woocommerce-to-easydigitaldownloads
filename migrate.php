@@ -64,8 +64,8 @@ echo $temp_log_str;
  * Check for required Plugins
  */
 include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
-if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) || ! is_plugin_active( 'easy-digital-downloads/easy-digital-downloads.php' ) ) {
-	exit( 'WC & EDD Not Activated.' );
+if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) || ! is_plugin_active( 'easy-digital-downloads/easy-digital-downloads.php' ) || ! is_plugin_active( 'edd-software-licensing/edd-software-licenses.php' ) ) {
+	exit( "\nWC & EDD Not Activated.\n" );
 }
 $temp_log_str = "\nWC & EDD activated ...\n";
 $log_str .= $temp_log_str;
@@ -264,16 +264,16 @@ foreach( $wc_product_list as $p ) {
 	if( !empty( $wc_product_featured_image ) ) {
 
 		// insert new attachment for new product
-		$attach_id = wc_edd_insert_attachment( $wc_product_featured_image, $edd_product_id );
-		if( empty( $attach_id ) ) {
-			$temp_log_str = "\nFeature Image could not be set for Product ...\n";
-			$log_str .= $temp_log_str;
-			echo $temp_log_str;
-			continue;
-		}
+//		$attach_id = wc_edd_insert_attachment( $wc_product_featured_image, $edd_product_id );
+//		if( empty( $attach_id ) ) {
+//			$temp_log_str = "\nFeature Image could not be set for Product ...\n";
+//			$log_str .= $temp_log_str;
+//			echo $temp_log_str;
+//			continue;
+//		}
 
 		// Set featured image
-		$edd_product_fi_meta_id = set_post_thumbnail( $edd_product_id, $attach_id );
+		$edd_product_fi_meta_id = set_post_thumbnail( $edd_product_id, $wc_product_featured_image );
 		if( empty( $edd_product_fi_meta_id ) ) {
 			$temp_log_str = "\nFeature Image could not be set for Product ...\n";
 			$log_str .= $temp_log_str;
@@ -305,106 +305,219 @@ foreach( $wc_product_list as $p ) {
 		echo $temp_log_str;
 	}
 
-	// Downloadable Files
-
-	if( ! class_exists( 'WP_Http' ) ) {
-		include_once( ABSPATH . WPINC. '/class-http.php' );
-	}
-
-	$wc_dl_files = $product->get_files();
-	$edd_dl_files = array();
-	$edd_dl_files_slug = 'edd_download_files';
-
-	foreach( $wc_dl_files as $wc_file ) {
-
-		$temp_log_str = "\nOld File : ".$wc_file[ 'file' ]."\n";
-		$log_str .= $temp_log_str;
-		echo $temp_log_str;
-
-		// To download file from the url
-		$file = new WP_Http();
-		$file = $file->request( $wc_file[ 'file' ] );
-		$temp_log_str = var_export( $file, true );
-		$log_str .= $temp_log_str;
-		echo $temp_log_str;
-		if( $file[ 'response' ][ 'code' ] != 200 ) {
-			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ... because old file could not be downloaded\n";
-			$log_str .= $temp_log_str;
-			echo $temp_log_str;
-			$temp_log_str = var_export( $wc_file[ 'file' ], true );
-			$log_str .= $temp_log_str;
-			echo $temp_log_str;
-			continue;
-		}
-
-		// Upload downloaded url to WP Upload directory
-		$attachment = wp_upload_bits( basename( $wc_file[ 'file' ] ), null, $file['body'], date("Y-m", strtotime( $file[ 'headers' ][ 'last-modified' ] ) ) );
-		if( ! empty( $attachment[ 'error' ] ) ) {
-			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ... because new file could not be uploaded.\n";
-			$log_str .= $temp_log_str;
-			echo $temp_log_str;
-			$temp_log_str = var_export( $wc_file[ 'file' ], true );
-			$log_str .= $temp_log_str;
-			echo $temp_log_str;
-			continue;
-		}
-
-		$filetype = wp_check_filetype( basename( $attachment[ 'file' ] ), null );
-		$wp_upload_dir = wp_upload_dir();
-
-		// Insert attachment for uploaded file
-		$postinfo = array(
-			'guid'           => $wp_upload_dir[ 'url' ] . '/' . basename( $attachment[ 'file' ] ),
-			'post_mime_type' => $filetype[ 'type' ],
-			'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $attachment[ 'file' ] ) ),
-			'post_content'   => '',
-			'post_status'    => 'inherit'
+	if( $product->product_type == 'variable' ) {
+		$args = array(
+			'post_type'		=> 'product_variation',
+			'post_status' 	=> array( 'private', 'publish' ),
+			'numberposts' 	=> -1,
+			'orderby' 		=> 'menu_order',
+			'order' 		=> 'asc',
+			'post_parent' 	=> $product->id,
 		);
-		$filename = $attachment[ 'file' ];
-		$attach_id = wp_insert_attachment( $postinfo, $filename, $edd_product_id );
-		if( empty( $attach_id ) ) {
-			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
+		$wc_variations = get_posts( $args );
+		if( $wc_variations ) foreach( $wc_variations as $variation ) {
+			// Downloadable Files
+			$wc_dl_files = maybe_unserialize( get_post_meta( $variation->ID, '_downloadable_files', true ) );
+			$edd_dl_files = array();
+			$edd_dl_files_slug = 'edd_download_files';
+			foreach( $wc_dl_files as $wc_file ) {
+
+				$temp_log_str = "\nOld File : ".$wc_file[ 'file' ]."\n";
+				$log_str .= $temp_log_str;
+				echo $temp_log_str;
+
+				// Prepare aray entry for downloaded file
+				$edd_dl_files[] = array(
+					//			'attachment_id' => $attach_id,
+					'attachment_id' => '',
+					//		    'name' => basename( $attachment[ 'file' ] ),
+					'name' => $wc_file['name'],
+					'file' => $wc_file[ 'file' ],
+				);
+			}
+
+			// Store downloadable files into meta table
+			if( !empty( $edd_dl_files ) ) {
+				update_post_meta( $edd_product_id, $edd_dl_files_slug, $edd_dl_files );
+				$temp_log_str = "\nWC Downloadable Files migrated ...\n";
+				$log_str .= $temp_log_str;
+				echo $temp_log_str;
+			}
+
+			// Download Limit
+			// Take old value from WC meta and save it into EDD meta.
+			$edd_dl_limit_slug = '_edd_download_limit';
+			$wc_dl_limit_slug = '_download_limit';
+			update_post_meta( $edd_product_id, $edd_dl_limit_slug, get_post_meta( $variation->ID, $wc_dl_limit_slug, true ) );
+			$temp_log_str = "\nWC Download Limit : " . get_post_meta( $variation->ID, $wc_dl_limit_slug, true ) . " migrated ...\n";
 			$log_str .= $temp_log_str;
 			echo $temp_log_str;
-			$temp_log_str = var_export( $wc_file[ 'file' ], true );
+
+			// Download Expiry
+			$wc_dl_expiry_slug = "_download_expiry";
+			$edd_dl_expiry_unit_slug = "_edd_sl_exp_unit";
+			$edd_dl_expiry_length_slug = "_edd_sl_exp_length";
+			update_post_meta( $edd_product_id, $edd_dl_expiry_length_slug, get_post_meta( $variation->ID, $wc_dl_expiry_slug, true ) );
+			update_post_meta( $edd_product_id, $edd_dl_expiry_unit_slug, 'days' );
+			$temp_log_str = "\nWC Download Expiry : " . get_post_meta( $variation->ID, $wc_dl_expiry_slug, true ) . " migrated ...\n";
 			$log_str .= $temp_log_str;
 			echo $temp_log_str;
-			continue;
+
+			$attributes = maybe_unserialize( get_post_meta( $product->id, '_product_attributes', true ) );
+			$variation_data = get_post_meta( $variation->ID );
+			$edd_variations = array();
+			foreach( $attributes as $attr ) {
+				// Only deal with attributes that are variations
+				if ( ! $attribute[ 'is_variation' ] ) {
+					continue;
+				}
+
+				$variation_selected_value = isset( $variation_data[ 'attribute_' . sanitize_title( $attribute['name'] ) ][0] ) ? $variation_data[ 'attribute_' . sanitize_title( $attribute['name'] ) ][0] : '';
+
+				$edd_variations[] = array(
+					'index' => '',
+				    'name' => $variation_selected_value,
+				    'value' => get_post_meta( $variation->ID, '_regular_price', true ),
+				    'license_limit' => get_post_meta( $variation->ID, '_api_activations', true ),
+				);
+			}
+
+			// Store Variations in EDD
+			$edd_variations_slug = 'edd_variable_prices';
+			if( ! empty( $edd_variations ) ) {
+				update_post_meta( $edd_product_id, $edd_variations_slug, $edd_variations );
+				$temp_log_str = "\nWC Downloadable Files migrated ...\n";
+				$log_str .= $temp_log_str;
+				echo $temp_log_str;
+			}
+
+		}
+	} else {
+		// Downloadable Files
+
+		//	if( ! class_exists( 'WP_Http' ) ) {
+		//		include_once( ABSPATH . WPINC. '/class-http.php' );
+		//	}
+
+		$wc_dl_files = $product->get_files();
+		$edd_dl_files = array();
+		$edd_dl_files_slug = 'edd_download_files';
+
+		foreach( $wc_dl_files as $wc_file ) {
+
+			$temp_log_str = "\nOld File : ".$wc_file[ 'file' ]."\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
+
+			// To download file from the url
+			//		$file = new WP_Http();
+			//		$file = $file->request( $wc_file[ 'file' ] );
+
+			//		if( $file[ 'response' ][ 'code' ] != 200 ) {
+			//			$temp_log_str = var_export( $file, true );
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ... because old file could not be downloaded\n";
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			$temp_log_str = var_export( $wc_file[ 'file' ], true );
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			continue;
+			//		}
+
+			// Upload downloaded url to WP Upload directory
+			//		$attachment = wp_upload_bits( basename( $wc_file[ 'file' ] ), null, $file['body'], date("Y-m", strtotime( $file[ 'headers' ][ 'last-modified' ] ) ) );
+			//		if( ! empty( $attachment[ 'error' ] ) ) {
+			//			$temp_log_str = var_export( $attachment, true );
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ... because new file could not be uploaded.\n";
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			$temp_log_str = var_export( $wc_file[ 'file' ], true );
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			continue;
+			//		}
+
+			//		$filetype = wp_check_filetype( basename( $attachment[ 'file' ] ), null );
+			//		$wp_upload_dir = wp_upload_dir();
+
+			// Insert attachment for uploaded file
+			//		$postinfo = array(
+			//			'guid'           => $wp_upload_dir[ 'url' ] . '/' . basename( $attachment[ 'file' ] ),
+			//			'post_mime_type' => $filetype[ 'type' ],
+			//			'post_title'     => preg_replace( '/\.[^.]+$/', '', basename( $attachment[ 'file' ] ) ),
+			//			'post_content'   => '',
+			//			'post_status'    => 'inherit'
+			//		);
+			//		$filename = $attachment[ 'file' ];
+			//		$attach_id = wp_insert_attachment( $postinfo, $filename, $edd_product_id );
+			//		if( empty( $attach_id ) ) {
+			//			$temp_log_str = "\nDownloadable File " . $wc_file[ 'name' ] . " could not be set for Product ...\n";
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			$temp_log_str = var_export( $wc_file[ 'file' ], true );
+			//			$log_str .= $temp_log_str;
+			//			echo $temp_log_str;
+			//			continue;
+			//		}
+
+			// Prepare aray entry for downloaded file
+			$edd_dl_files[] = array(
+				//			'attachment_id' => $attach_id,
+				'attachment_id' => '',
+				//		    'name' => basename( $attachment[ 'file' ] ),
+				'name' => $wc_file['name'],
+				'file' => $wc_file[ 'file' ],
+			);
 		}
 
-		// Prepare aray entry for downloaded file
-		$edd_dl_files[] = array(
-			'attachment_id' => $attach_id,
-		    'name' => basename( $attachment[ 'file' ] ),
-		    'file' => $attachment[ 'file' ],
-		);
-	}
+		// Store downloadable files into meta table
+		if( !empty( $edd_dl_files ) ) {
+			update_post_meta( $edd_product_id, $edd_dl_files_slug, $edd_dl_files );
+			$temp_log_str = "\nWC Downloadable Files migrated ...\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
+		}
 
-	// Store downloadable files into meta table
-	if( !empty( $edd_dl_files ) ) {
-		update_post_meta( $edd_product_id, $edd_dl_files_slug, $edd_dl_files );
-		$temp_log_str = "\nWC Downloadable Files migrated ...\n";
+		// Download Limit
+		// Take old value from WC meta and save it into EDD meta.
+		$edd_dl_limit_slug = '_edd_download_limit';
+		$wc_dl_limit_slug = '_download_limit';
+		update_post_meta( $edd_product_id, $edd_dl_limit_slug, get_post_meta( $p->ID, $wc_dl_limit_slug, true ) );
+		$temp_log_str = "\nWC Download Limit : " . get_post_meta( $p->ID, $wc_dl_limit_slug, true ) . " migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+
+		// Price
+		// Take old value from WC meta and save it into EDD meta.
+		$edd_product_price_slug = 'edd_price';
+		$wc_product_price_slug = '_regular_price';
+		update_post_meta( $edd_product_id, $edd_product_price_slug, get_post_meta( $p->ID, $wc_product_price_slug, true ) );
+		$temp_log_str = "\nWC Product Price : " . get_post_meta( $p->ID, $wc_product_price_slug, true ) . " migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+
+		// Activation Limit
+		$wc_activation_limit_slug = '_api_activations_parent';
+		$edd_activation_limit_slug = '_edd_sl_version';
+		update_post_meta( $edd_product_id, $edd_activation_limit_slug, get_post_meta( $p->ID, $wc_activation_limit_slug, true ) );
+		$temp_log_str = "\nWC Activation Limit : " . get_post_meta( $p->ID, $wc_activation_limit_slug, true ) . " migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+
+		// Download Expiry
+		$wc_dl_expiry_slug = "_download_expiry";
+		$edd_dl_expiry_unit_slug = "_edd_sl_exp_unit";
+		$edd_dl_expiry_length_slug = "_edd_sl_exp_length";
+		update_post_meta( $edd_product_id, $edd_dl_expiry_length_slug, get_post_meta( $p->ID, $wc_dl_expiry_slug, true ) );
+		update_post_meta( $edd_product_id, $edd_dl_expiry_unit_slug, 'days' );
+		$temp_log_str = "\nWC Download Expiry : " . get_post_meta( $p->ID, $wc_dl_expiry_slug, true ) . " migrated ...\n";
 		$log_str .= $temp_log_str;
 		echo $temp_log_str;
 	}
-
-	// Download Limit
-	// Take old value from WC meta and save it into EDD meta.
-	$edd_dl_limit_slug = '_edd_download_limit';
-	$wc_dl_limit_slug = '_download_limit';
-	update_post_meta( $edd_product_id, $edd_dl_limit_slug, get_post_meta( $p->ID, $wc_dl_limit_slug, true ) );
-	$temp_log_str = "\nWC Download Limit : " . get_post_meta( $p->ID, $wc_dl_limit_slug, true ) . " migrated ...\n";
-	$log_str .= $temp_log_str;
-	echo $temp_log_str;
-
-	// Price
-	// Take old value from WC meta and save it into EDD meta.
-	$edd_product_price_slug = 'edd_price';
-	$wc_product_price_slug = '_regular_price';
-	update_post_meta( $edd_product_id, $edd_product_price_slug, get_post_meta( $p->ID, $wc_product_price_slug, true ) );
-	$temp_log_str = "\nWC Product Price : " . get_post_meta( $p->ID, $wc_product_price_slug, true ) . " migrated ...\n";
-	$log_str .= $temp_log_str;
-	echo $temp_log_str;
 
 	// Sales
 	// Take old value from WC meta and save it into EDD meta.
@@ -412,6 +525,22 @@ foreach( $wc_product_list as $p ) {
 	$wc_product_sales_slug = 'total_sales';
 	update_post_meta( $edd_product_id, $edd_product_sales_slug, get_post_meta( $p->ID, $wc_product_sales_slug, true ) );
 	$temp_log_str = "\nWC Product Total Sales : " . get_post_meta( $p->ID, $wc_product_sales_slug, true ) . " migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
+
+	// API Enabled - Licensing Enabled
+	$wc_api_slug = '_is_api';
+	$edd_sl_slug = '_edd_sl_enabled';
+	update_post_meta( $edd_product_id, $edd_sl_slug, get_post_meta( $p->ID, $wc_api_slug, true ) );
+	$temp_log_str = "\nWC Product API Enabled : " . get_post_meta( $p->ID, $wc_api_slug, true ) . " migrated ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
+
+	// Software Version
+	$wc_api_version_slug = '_api_new_version';
+	$edd_sl_version_slug = '_edd_sl_version';
+	update_post_meta( $edd_product_id, $edd_sl_version_slug, get_post_meta( $p->ID, $wc_api_version_slug, true ) );
+	$temp_log_str = "\nWC Product Version : " . get_post_meta( $p->ID, $wc_api_version_slug, true ) . " migrated ...\n";
 	$log_str .= $temp_log_str;
 	echo $temp_log_str;
 
@@ -577,6 +706,8 @@ foreach( $wc_order_list as $o ) {
 		$email = $user->user_email;
 	}
 
+	echo "\nUSER ID : $user_id\n";
+
 	if( $user_id instanceof WP_Error ) {
 		$temp_log_str = "\nUser could not be created. Invalid Email. So order could not be migrated ...\n";
 		$log_str .= $temp_log_str;
@@ -633,7 +764,7 @@ foreach( $wc_order_list as $o ) {
 			$price = $subtotal;  // $item[ 'line_total' ]
 		} else {
 			$item_price = $item[ 'line_subtotal' ];
-			$discount = $coupon->get_discount_amount( $item_price, $item );
+			$discount = ( ! empty( $wc_coupon ) ) ? $wc_coupon->get_discount_amount( $item_price, $item ) : 0;
 			$subtotal = ( $item[ 'line_subtotal' ] * $item[ 'qty' ] ) - $discount;
 			$price = $subtotal;  // $item[ 'line_total' ]
 		}
@@ -769,10 +900,24 @@ foreach( $wc_order_list as $o ) {
 		$log_str .= $temp_log_str;
 		echo $temp_log_str;
 	}
-}
 
-echo "\nMIGRATION COMPLETE !!! PLEASE CHECK THE LOG FILE IN THE SAME FOLDER !!!\n";
-file_put_contents( "wc_edd_migration." . current_time( 'mysql' ) . ".log", $log_str, FILE_APPEND );
+
+	// Software License.
+	$edd_sl_cpt = 'edd_license';
+
+	// Fetch WC SL
+	var_dump($order->order_key);
+	$wc_sl_list = WCAM()->helpers->get_users_activation_data( $user_id, $order->order_key );
+	$temp_log_str = "\nWC SL fetched ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
+
+	$wc_edd_sl_map = array();
+
+	foreach( $wc_sl_list as $license ) {
+//		var_dump( $license );
+	}
+}
 
 /**
  * Step 5
@@ -790,4 +935,18 @@ file_put_contents( "wc_edd_migration." . current_time( 'mysql' ) . ".log", $log_
 /**
  * Step 7
  * Download Logs
+ * - Not so important as of now.
  */
+
+
+/**
+ * Step 8
+ * Software Licensing
+ * - This is covered in Order Migration.
+ */
+
+/**
+ * Generate Log File
+ */
+echo "\nMIGRATION COMPLETE !!! PLEASE CHECK THE LOG FILE IN THE SAME FOLDER !!!\n";
+file_put_contents( "wc_edd_migration." . current_time( 'mysql' ) . ".log", $log_str, FILE_APPEND );

@@ -24,16 +24,16 @@ include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
  * Check for required Plugins
  */
 
-if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) || ! is_plugin_active( 'easy-digital-downloads/easy-digital-downloads.php' ) ) {
-	exit( 'WC & EDD Not Activated.' );
+if ( ! is_plugin_active( 'woocommerce/woocommerce.php' ) || ! is_plugin_active( 'easy-digital-downloads/easy-digital-downloads.php' ) || ! is_plugin_active( 'edd-software-licensing/edd-software-licenses.php' ) ) {
+	exit( "\nWC / EDD / EDD SL Not Activated.\n" );
 }
-echo "\nWC & EDD activated ...\n";
+echo "\nWC & EDD & EDD SL activated ...\n";
 
 global $wpdb, $edd_options, $wp_roles;
 
 /** Delete All the Custom Post Types */
 $edd_taxonomies = array( 'download_category', 'download_tag', 'edd_log_type', );
-$edd_post_types = array( 'download', 'edd_payment', 'edd_discount', 'edd_log' );
+$edd_post_types = array( 'download', 'edd_payment', 'edd_discount', 'edd_log', 'edd_license', 'edd_license_log' );
 foreach ( $edd_post_types as $post_type ) {
 
 	$edd_taxonomies = array_merge( $edd_taxonomies, get_object_taxonomies( $post_type ) );

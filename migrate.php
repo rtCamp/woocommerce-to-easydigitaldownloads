@@ -374,11 +374,11 @@ foreach( $wc_product_list as $p ) {
 			$edd_variations = array();
 			foreach( $attributes as $attr ) {
 				// Only deal with attributes that are variations
-				if ( ! $attribute[ 'is_variation' ] ) {
+				if ( ! $attr[ 'is_variation' ] ) {
 					continue;
 				}
 
-				$variation_selected_value = isset( $variation_data[ 'attribute_' . sanitize_title( $attribute['name'] ) ][0] ) ? $variation_data[ 'attribute_' . sanitize_title( $attribute['name'] ) ][0] : '';
+				$variation_selected_value = isset( $variation_data[ 'attribute_' . sanitize_title( $attr['name'] ) ][0] ) ? $variation_data[ 'attribute_' . sanitize_title( $attr['name'] ) ][0] : '';
 
 				$temp_log_str = "\nVariation Value : $variation_selected_value ...\n";
 				$log_str .= $temp_log_str;

@@ -372,7 +372,6 @@ foreach( $wc_product_list as $p ) {
 
 			$attributes = maybe_unserialize( get_post_meta( $product->id, '_product_attributes', true ) );
 			$variation_data = get_post_meta( $variation->ID );
-			$edd_variations = array();
 			foreach( $attributes as $attr ) {
 				// Only deal with attributes that are variations
 				if ( ! $attr[ 'is_variation' ] ) {

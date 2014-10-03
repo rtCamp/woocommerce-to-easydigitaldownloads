@@ -385,11 +385,11 @@ foreach( $wc_product_list as $p ) {
 				$log_str .= $temp_log_str;
 				echo $temp_log_str;
 
-				$temp_log_str = "\nVariation Price : get_post_meta( $variation->ID, '_regular_price', true ) ...\n";
+				$temp_log_str = "\nVariation Price : ".get_post_meta( $variation->ID, '_regular_price', true )." ...\n";
 				$log_str .= $temp_log_str;
 				echo $temp_log_str;
 
-				$temp_log_str = "\nVariation Activation : get_post_meta( $variation->ID, '_api_activations', true ) ...\n";
+				$temp_log_str = "\nVariation Activation : ".get_post_meta( $variation->ID, '_api_activations', true )." ...\n";
 				$log_str .= $temp_log_str;
 				echo $temp_log_str;
 

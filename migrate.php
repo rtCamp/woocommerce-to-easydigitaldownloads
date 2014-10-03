@@ -395,7 +395,7 @@ foreach( $wc_product_list as $p ) {
 				$edd_variations[] = array(
 					'index' => '',
 				    'name' => $variation_selected_value,
-				    'value' => get_post_meta( $variation->ID, '_regular_price', true ),
+				    'amount' => get_post_meta( $variation->ID, '_regular_price', true ),
 				    'license_limit' => get_post_meta( $variation->ID, '_api_activations', true ),
 				);
 			}

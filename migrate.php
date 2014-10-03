@@ -706,7 +706,9 @@ foreach( $wc_order_list as $o ) {
 		$email = $user->user_email;
 	}
 
-	echo "\nUSER ID : $user_id\n";
+	echo "\nUSER ID : ";
+	var_dump($user_id);
+	echo "\n";
 
 	if( $user_id instanceof WP_Error ) {
 		$temp_log_str = "\nUser could not be created. Invalid Email. So order could not be migrated ...\n";

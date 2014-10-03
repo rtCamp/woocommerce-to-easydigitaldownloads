@@ -317,6 +317,11 @@ foreach( $wc_product_list as $p ) {
 		$wc_variations = get_posts( $args );
 		update_post_meta( $edd_product_id, '_variable_pricing', 1 );
 		if( $wc_variations ) foreach( $wc_variations as $variation ) {
+
+			$temp_log_str = "\nVariation - $variation->ID\n";
+			$log_str .= $temp_log_str;
+			echo $temp_log_str;
+
 			// Downloadable Files
 			$wc_dl_files = maybe_unserialize( get_post_meta( $variation->ID, '_downloadable_files', true ) );
 			$edd_dl_files = array();
@@ -375,6 +380,10 @@ foreach( $wc_product_list as $p ) {
 
 				$variation_selected_value = isset( $variation_data[ 'attribute_' . sanitize_title( $attribute['name'] ) ][0] ) ? $variation_data[ 'attribute_' . sanitize_title( $attribute['name'] ) ][0] : '';
 
+				$temp_log_str = "\nVariation Value : $variation_selected_value ...\n";
+				$log_str .= $temp_log_str;
+				echo $temp_log_str;
+
 				$edd_variations[] = array(
 					'index' => '',
 				    'name' => $variation_selected_value,
@@ -387,7 +396,7 @@ foreach( $wc_product_list as $p ) {
 			$edd_variations_slug = 'edd_variable_prices';
 			if( ! empty( $edd_variations ) ) {
 				update_post_meta( $edd_product_id, $edd_variations_slug, $edd_variations );
-				$temp_log_str = "\nWC Downloadable Files migrated ...\n";
+				$temp_log_str = "\nWC Variations migrated ...\n";
 				$log_str .= $temp_log_str;
 				echo $temp_log_str;
 			}

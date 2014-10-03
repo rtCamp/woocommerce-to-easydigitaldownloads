@@ -315,6 +315,7 @@ foreach( $wc_product_list as $p ) {
 			'post_parent' 	=> $product->id,
 		);
 		$wc_variations = get_posts( $args );
+		update_post_meta( $edd_product_id, '_variable_pricing', 1 );
 		if( $wc_variations ) foreach( $wc_variations as $variation ) {
 			// Downloadable Files
 			$wc_dl_files = maybe_unserialize( get_post_meta( $variation->ID, '_downloadable_files', true ) );

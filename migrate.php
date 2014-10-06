@@ -922,20 +922,21 @@ foreach( $wc_order_list as $o ) {
 
 
 	// Software License.
-	$edd_sl_cpt = 'edd_license';
+//	$edd_sl_cpt = 'edd_license';
 
 	// Fetch WC SL
-	var_dump($order->order_key);
-	$wc_sl_list = WCAM()->helpers->get_users_activation_data( $user_id, $order->order_key );
-	$temp_log_str = "\nWC SL fetched ...\n";
-	$log_str .= $temp_log_str;
-	echo $temp_log_str;
+//	var_dump($order->order_key);
+//	$wc_sl_list = WCAM()->helpers->get_users_activation_data( $user_id, $order->order_key );
+//	$temp_log_str = "\nWC SL fetched ...\n";
+//	$log_str .= $temp_log_str;
+//	echo $temp_log_str;
+//
+//	$wc_edd_sl_map = array();
 
-	$wc_edd_sl_map = array();
-
-	foreach( $wc_sl_list as $license ) {
+//	foreach( $wc_sl_list as $license ) {
 //		var_dump( $license );
-	}
+//		edd_software_licensing()->generate_license();
+//	}
 }
 
 /**
@@ -961,7 +962,8 @@ foreach( $wc_order_list as $o ) {
 /**
  * Step 8
  * Software Licensing
- * - This is covered in Order Migration.
+ * - Not required since New Download Licences are generated while migrating new orders.
+ * - Activated Sites will be added manually later on.
  */
 
 /**

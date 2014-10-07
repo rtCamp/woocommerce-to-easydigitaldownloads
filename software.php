@@ -475,7 +475,7 @@ function wc_edd_send_error_api_data( $request, $errors ) {
  */
 
 if ( ! defined( 'WP_LOAD_PATH' ) ) {
-	$path ="../";
+	$path ="../../../";
 	if ( file_exists( $path . 'wp-load.php' ) )
 		define( 'WP_LOAD_PATH', $path );
 	else

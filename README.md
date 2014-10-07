@@ -36,3 +36,6 @@ You can reset EDD database in case of trouble:
 ```
 php reset.php
 ```
+
+**NOTE :**
+If you are using WooCommerce API Manager and wish to migrate to EDD Software Add-on, check [software.md](https://github.com/rtCamp/woocommerce-to-easydigitaldownloads/software.md) for further instructions

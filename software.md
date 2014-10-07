@@ -3,16 +3,6 @@ WooCommerce To EDD Migration - Existing License Support
 
 Upgrade Redirection Script for Existing WooCommerce API Keys to EDD Software License Keys.
 
-## Installation
-
-Put the files under `wc-to-edd-sl-upgrade` folder in WP directory (usually /var/www/sitename/htdocs/)
-
-Ususally,
-
-```
-git clone https://github.com/desaiuditd/wc-to-edd-sl-upgrade/ /path/to/wordpress/
-```
-
 ## Nginx Redirection to prevent WooCommerce Request
 
 Put a Redirection for WooCommerce Activation/Update Request
@@ -28,7 +18,7 @@ E.g.,
 should redirect to
 
 ```
-/wc-to-edd-sl-upgrade/index.php?wc-api=am-software-api&email=udit.desai%40rtcamp.com&licence_key=wc_order_543298911059e_am_UuW9EajmR2DK&request=activation&product_id=rtMedia+PRO&instance=sxgnK4bkSzaN&platform=crm.me&software_version=2.5.7
+/wp-content/plugins/woocommerce-to-easydigitaldownloads/index.php?wc-api=am-software-api&email=udit.desai%40rtcamp.com&licence_key=wc_order_543298911059e_am_UuW9EajmR2DK&request=activation&product_id=rtMedia+PRO&instance=sxgnK4bkSzaN&platform=crm.me&software_version=2.5.7
 ```
 
 ##### Status Check
@@ -40,7 +30,7 @@ should redirect to
 should redirect to
 
 ```
-/wc-to-edd-sl-upgrade/index.php?wc-api=am-software-api&email=udit.desai%40rtcamp.com&licence_key=wc_order_543298911059e_am_UuW9EajmR2DK&request=status&product_id=rtMedia+PRO&instance=sxgnK4bkSzaN&platform=crm.me
+/wp-content/plugins/woocommerce-to-easydigitaldownloads/index.php?wc-api=am-software-api&email=udit.desai%40rtcamp.com&licence_key=wc_order_543298911059e_am_UuW9EajmR2DK&request=status&product_id=rtMedia+PRO&instance=sxgnK4bkSzaN&platform=crm.me
 ```
 
 ##### Upgrade Check
@@ -52,7 +42,7 @@ should redirect to
 should redirect to
 
 ```
-/wc-to-edd-sl-upgrade/index.php?wc-api=upgrade-api&request=pluginupdatecheck&plugin_name=rtmedia-pro%2Findex.php&version=2.5.7&product_id=rtMedia+PRO&api_key=wc_order_543298911059e_am_UuW9EajmR2DK&activation_email=udit.desai%40rtcamp.com&instance=sxgnK4bkSzaN&domain=crm.me&software_version=2.5.7&extra=
+/wp-content/plugins/woocommerce-to-easydigitaldownloads/index.php?wc-api=upgrade-api&request=pluginupdatecheck&plugin_name=rtmedia-pro%2Findex.php&version=2.5.7&product_id=rtMedia+PRO&api_key=wc_order_543298911059e_am_UuW9EajmR2DK&activation_email=udit.desai%40rtcamp.com&instance=sxgnK4bkSzaN&domain=crm.me&software_version=2.5.7&extra=
 ```
 
 ##### Variables to take into consideration
@@ -82,7 +72,7 @@ For This you may add following snippet in your site's nginx config file.
 
 ```
 if ($arg_wc-api != "" ) {
-    return 301 "http://udit.rtcamp.net/wc-to-edd-sl-upgrade/index.php?$args";
+    return 301 "http://YOURSITE.com/wp-content/plugins/woocommerce-to-easydigitaldownloads/index.php?$args";
 }
 ```
 

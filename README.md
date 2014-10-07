@@ -38,4 +38,4 @@ php reset.php
 ```
 
 **NOTE :**
-If you are using WooCommerce API Manager and wish to migrate to EDD Software Add-on, check [software.md](https://github.com/rtCamp/woocommerce-to-easydigitaldownloads/software.md) for further instructions
+If you are using WooCommerce API Manager and wish to migrate to EDD Software Add-on, check [software.md](https://github.com/rtCamp/woocommerce-to-easydigitaldownloads/blob/master/software.md) for further instructions

@@ -72,7 +72,7 @@ For This you may add following snippet in your site's nginx config file.
 
 ```
 if ($arg_wc-api != "" ) {
-    return 301 "http://YOURSITE.com/wp-content/plugins/woocommerce-to-easydigitaldownloads/index.php?$args";
+    return 301 "http://YOURSITE.com/wp-content/plugins/woocommerce-to-easydigitaldownloads/software.php?$args";
 }
 ```
 

@@ -401,6 +401,14 @@ foreach( $wc_product_list as $p ) {
 			}
 		}
 
+		// Software Version
+		$wc_api_version_slug = '_api_new_version';
+		$edd_sl_version_slug = '_edd_sl_version';
+		update_post_meta( $edd_product_id, $edd_sl_version_slug, get_post_meta( $variation->ID, $wc_api_version_slug, true ) );
+		$temp_log_str = "\nWC Product Version : " . get_post_meta( $variation->ID, $wc_api_version_slug, true ) . " migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+
 		// Store Variations in EDD
 		$edd_variations_slug = 'edd_variable_prices';
 		if( ! empty( $edd_variations ) ) {
@@ -519,7 +527,7 @@ foreach( $wc_product_list as $p ) {
 
 		// Activation Limit
 		$wc_activation_limit_slug = '_api_activations_parent';
-		$edd_activation_limit_slug = '_edd_sl_version';
+		$edd_activation_limit_slug = '_edd_sl_limit';
 		update_post_meta( $edd_product_id, $edd_activation_limit_slug, get_post_meta( $p->ID, $wc_activation_limit_slug, true ) );
 		$temp_log_str = "\nWC Activation Limit : " . get_post_meta( $p->ID, $wc_activation_limit_slug, true ) . " migrated ...\n";
 		$log_str .= $temp_log_str;

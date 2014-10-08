@@ -180,6 +180,9 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 
 	$edd_product = get_posts(
 		array(
+			'post_type' => 'download',
+			'post_status' => 'any',
+			'nopaging' => true,
 			'meta_query' => array(
 				'key' => '_wc_product_id',
 			    'value' => $product_id,
@@ -397,7 +400,7 @@ function wc_edd_software_api_send_error() {
 	$error = array(
 		'error' => __( 'You need to upgrade our new version of plugin. We have migrated our store to EDD.' ),
 	    'code' => '106',
-	    'additional_info' => __( 'Additional Information' ),
+	    'additional info' => __( 'Additional Information' ),
 	    'timestamp' => time(),
 	);
 
@@ -512,29 +515,6 @@ if ( isset( $_REQUEST[ 'wc-api' ] ) ) switch( $_REQUEST[ 'wc-api' ] ) {
 
 					// Get activation info
 					$current_info = wc_edd_get_users_activation_data( $user->ID, $order_info[ 'order_key' ] );
-
-					// Check if this software has been activated
-					if ( is_array( $current_info ) && ! empty( $current_info ) ) {
-
-						// If false is returned then the software has not yet been activated and an error is returned
-						if ( wc_edd_array_search_multi( $current_info, 'order_key', $_REQUEST[ 'api_key' ] ) === false ) {
-
-							wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'no_activation' => 'no_activation' ) );
-
-						}
-
-						// If false is returned then the software has not yet been activated and an error is returned
-						if ( ! empty( $_REQUEST[ 'instance' ] ) && wc_edd_array_search_multi( $current_info, 'instance', $_REQUEST[ 'instance' ] ) === false ) {
-
-							wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'no_activation' => 'no_activation' ) );
-
-						}
-
-					} else { // Send an error if this software has not been activated
-
-						wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'no_activation' => 'no_activation' ) );
-
-					}
 
 					// Finds the post ID (integer) for a product even if it is a variable product
 					if ( $order_info[ 'is_variable_product' ] == 'no' ) {

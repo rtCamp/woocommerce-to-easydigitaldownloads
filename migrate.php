@@ -569,6 +569,14 @@ foreach( $wc_product_list as $p ) {
 	$log_str .= $temp_log_str;
 	echo $temp_log_str;
 
+	// Old Plugin Update Info
+	update_post_meta( $edd_product_id, '_product_update_slug', get_post_meta( $p->ID, '_product_update_slug', true ) );
+	update_post_meta( $edd_product_id, '_product_update_version', get_post_meta( $p->ID, '_product_update_version', true ) );
+
+
+	// Product Demo URL
+	update_post_meta( $edd_product_id, '_product_live_demo_url', get_post_meta( $p->ID, '_product_live_demo_url', true ) );
+
 	// Reviews
 	$args = array(
 		'post_id' => $product->id,

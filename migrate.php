@@ -561,10 +561,54 @@ foreach( $wc_product_list as $p ) {
 	$log_str .= $temp_log_str;
 	echo $temp_log_str;
 
+	// Reviews
+	$args = array(
+		'post_id' => $product->id,
+		'approve' => 'approve',
+	);
+	$wc_reviews = get_comments( $args );
+	$temp_log_str = "\nProduct Reviews fetched ...\n";
+	$log_str .= $temp_log_str;
+	echo $temp_log_str;
+
+	foreach ( $wc_reviews as $comment ) {
+
+		$temp_log_str = "\nWC Review - $comment->comment_ID\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+
+		$comment_data = array(
+			'comment_post_ID' => $wc_edd_product_map[ $product->id ],
+			'comment_author' => $comment->comment_author,
+			'comment_author_email' => $comment->comment_author_email,
+			'comment_content' => $comment->comment_content,
+			'comment_approved' => 1,
+		);
+
+		$edd_review_id = wp_insert_comment( $comment_data );
+
+		// Update relevant data from old comment
+		wp_update_comment( array(
+			'comment_ID' => $edd_review_id,
+			'comment_date' => $comment->comment_date,
+			'comment_date_gmt' => $comment->comment_date_gmt,
+		) );
+		update_comment_meta( $edd_review_id, '_wc_review_id', $comment->comment_ID );
+
+		// Migrate Rating
+		update_comment_meta( $edd_review_id, '_wc_rating', get_comment_meta( $comment->comment_ID, 'rating', true ) );
+
+		$temp_log_str = "\nWC Review migrated ...\n";
+		$log_str .= $temp_log_str;
+		echo $temp_log_str;
+	}
+
+	var_dump($reviews);
+
 	// Earnings
 	// TODO - Do it when migrating orders i.e. Payment History
 }
-
+exit();
 /**
  * Step 3
  * Coupons Migrate
@@ -891,7 +935,6 @@ foreach( $wc_order_list as $o ) {
 	$args = array(
 		'post_id' => $order->id,
 		'approve' => 'approve',
-		'type' => ''
 	);
 	$wc_notes = get_comments( $args );
 	$temp_log_str = "\nOrder Notes fetched ...\n";

@@ -608,7 +608,7 @@ foreach( $wc_product_list as $p ) {
 	// Earnings
 	// TODO - Do it when migrating orders i.e. Payment History
 }
-exit();
+
 /**
  * Step 3
  * Coupons Migrate

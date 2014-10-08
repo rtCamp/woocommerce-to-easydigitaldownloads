@@ -3,61 +3,6 @@
  * Helper Functions
  */
 
-function wc_edd_create_url( $order_key, $activation_email, $product_id, $download_id = '', $user_id ) {
-	global $wpdb;
-
-	$sql = "
-			SELECT product_id,order_id,downloads_remaining,user_id,download_count,access_expires,download_id
-			FROM {$wpdb->prefix}woocommerce_downloadable_product_permissions
-			WHERE user_email = %s
-			AND order_key = %s
-			AND product_id = %s";
-
-	$args = array(
-		$activation_email,
-		$order_key,
-		$product_id
-	);
-
-	if ( $download_id ) {
-		// backwards compatibility for existing download URLs
-		$sql .= " AND download_id = %s";
-		$args[] = $download_id;
-	}
-
-	// Returns an Object
-	$result = $wpdb->get_row( $wpdb->prepare( $sql, $args ) );
-
-	if ( is_object( $result ) ) {
-
-		// Cost value is between 4 and 31
-//		$hash_data = WCAM()->hash->wam_password_hash( null, null, array( 'cost' => 4 ), $user_id );
-
-		$url_args = array(
-			'am_download_file' 	=> $result->product_id,
-			'am_order' 			=> $order_key,
-			'am_email' 			=> $activation_email,
-//			'hname' 			=> $hash_data['hname'],
-//			'hkey' 				=> $hash_data['hkey'],
-//			'hexpires' 			=> $hash_data['hexpires']
-		);
-
-		if ( $result->download_id != '' ) {
-			$url_args['am_key'] = $result->download_id;
-		}
-
-		return home_url( '/?' ) . http_build_query( $url_args, '', '&' );
-
-	} else {
-
-		return false;
-
-	}
-
-	return false;
-
-}
-
 function wc_edd_decrypt( $string ) {
 
 	if ( empty( $string ) ) {
@@ -95,7 +40,7 @@ function wc_edd_format_secure_s3_url( $url, $expire = false ) {
 
 	if ( ! empty( $url ) ) {
 
-		$secret_key = WCAM()->encrypt->decrypt( get_option( 'woocommerce_api_manager_amazon_s3_secret_access_key' ) );
+		$secret_key = wc_edd_decrypt( get_option( 'woocommerce_api_manager_amazon_s3_secret_access_key' ) );
 
 		if ( $expire === false ) {
 
@@ -221,8 +166,6 @@ function wc_edd_get_download_count( $order_id, $order_key ) {
 
 function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api_key, $activation_email, $post_id, $order_key, $user ) {
 
-	$download_count_set = wc_edd_get_download_count( $order_id, $order_key );
-
 	// The download ID is needed for the order specific download URL
 	$download_id = wc_edd_get_download_id( $post_id );
 
@@ -231,143 +174,123 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	$downloads_remaining 	= $downloadable_data->downloads_remaining;
 	$download_count 		= $downloadable_data->download_count;
 	$access_expires 		= $downloadable_data->access_expires;
+	$product_id             = $downloadable_data->product_id;
+	$user_id                = $downloadable_data->user_id;
+	$order_id               = $downloadable_data->order_id;
 
-	if ( $downloads_remaining == '0' ) {
+	$edd_product = get_posts(
+		array(
+			'meta_query' => array(
+				'key' => '_wc_product_id',
+			    'value' => $product_id,
+			),
+		)
+	);
+
+	if ( empty( $edd_product ) ) {
+		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
+	}
+
+	$edd_product = $edd_product[0];
+
+	$edd_product_id = $edd_product->ID;
+
+	// Get the API data in an array
+	$api_data = get_post_custom( $post_id );
+
+	/**
+	 * Check for Amazon S3 URL
+	 * @since 1.3.2
+	 */
+	$url = wc_edd_get_download_url( $post_id );
+
+	if ( ! empty( $url ) && wc_edd_find_amazon_s3_in_url( $url ) === true ) {
+
+		$download_link = wc_edd_format_secure_s3_url( $url );
+
+	} else {
+
+		// Build the order specific download URL
+
+		$download_name 	= get_the_title( $edd_product_id );
+		$file_key 		= get_post_meta( $edd_product_id, '_edd_sl_upgrade_file_key', true );
+
+		$hash = md5( $download_name . $file_key . $edd_product_id );
+
+		$download_link = add_query_arg( array(
+			'edd_action' 	=> 'package_download',
+			'id' 			=> $edd_product_id,
+			'key' 			=> $hash,
+			'expires'		=> rawurlencode( base64_encode( strtotime( '+1 hour' ) ) ),
+		), trailingslashit( home_url() ) );
+
+	}
+
+	if ( $download_link === false || empty( $download_link ) ) {
 
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
 
 	}
 
-	if ( $access_expires > 0 && strtotime( $access_expires ) < current_time( 'timestamp' ) ) {
+	$new_version = get_post_meta( $edd_product_id, '_edd_sl_version', true );
 
-		wc_edd_send_error_api_data( $this->request, array( 'download_revoked' => 'download_revoked' ) );
+	/**
+	 * Prepare pages for display in upgrade "View version details" screen
+	 */
+	$desc_obj 		= get_post( $api_data['_api_description'][0] );
+	$install_obj 	= get_post( $api_data['_api_installation'][0] );
+	$faq_obj 		= get_post( $api_data['_api_faq'][0] );
+	$screen_obj 	= get_post( $api_data['_api_screenshots'][0] );
+	$change_obj 	= get_post( $api_data['_api_changelog'][0] );
+	$notes_obj 		= get_post( $api_data['_api_other_notes'][0] );
 
-	}
+	// Instantiate $response object
+	$response = new stdClass();
 
-	if ( $download_count_set !== false ) {
-
-		// Get the API data in an array
-		$api_data = get_post_custom( $post_id );
-
-		/**
-		 * Check for Amazon S3 URL
-		 * @since 1.3.2
-		 */
-		$url = wc_edd_get_download_url( $post_id );
-
-		if ( ! empty( $url ) && wc_edd_find_amazon_s3_in_url( $url ) === true ) {
-
-			$download_link = wc_edd_format_secure_s3_url( $url );
-
-		} else {
-
-			// Build the order specific download URL
-			$download_link = wc_edd_create_url( $order_key, $activation_email, $post_id, $download_id, $user->ID );
-
-		}
-
-		if ( $download_link === false || empty( $download_link ) ) {
-
-			wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
-
-		}
+	switch( $request ) {
 
 		/**
-		 * Prepare pages for display in upgrade "View version details" screen
+		 * new_version here is compared with the current version in plugin
+		 * Provides info for plugin row and dashboard -> updates page
 		 */
-		$desc_obj 		= get_post( $api_data['_api_description'][0] );
-		$install_obj 	= get_post( $api_data['_api_installation'][0] );
-		$faq_obj 		= get_post( $api_data['_api_faq'][0] );
-		$screen_obj 	= get_post( $api_data['_api_screenshots'][0] );
-		$change_obj 	= get_post( $api_data['_api_changelog'][0] );
-		$notes_obj 		= get_post( $api_data['_api_other_notes'][0] );
-
-		// Instantiate $response object
-		$response = new stdClass();
-
-		switch( $request ) {
-
-			/**
-			 * new_version here is compared with the current version in plugin
-			 * Provides info for plugin row and dashboard -> updates page
-			 */
-			case 'pluginupdatecheck':
-				$response->slug 					= $plugin_name;
-				$response->new_version 				= $api_data['_api_new_version'][0];
-				$response->url 						= $api_data['_api_plugin_url'][0];
-				$response->package 					= $download_link;
-				break;
-			/**
-			 * Request for detailed information for view details page
-			 * more plugin info:
-			 * wp-admin/includes/plugin-install.php
-			 * Display plugin information in dialog box form.
-			 * function install_plugin_information()
-			 *
-			 */
-			case 'plugininformation':
-				$response->name 					= $_REQUEST[ 'product_id' ];
-				$response->version 					= $api_data['_api_new_version'][0];
-				$response->slug 					= $plugin_name;
-				$response->author 					= $api_data['_api_author'][0];
-				$response->homepage 				= $api_data['_api_plugin_url'][0];
-				$response->requires 				= $api_data['_api_version_required'][0];
-				$response->tested 					= $api_data['_api_tested_up_to'][0];
-				$response->downloaded 				= $download_count;
-				$response->last_updated 			= $api_data['_api_last_updated'][0];
-				$response->download_link 			= $download_link;
-				$response->sections = array(
-					'description' 	=> '',
-					'installation' 	=> '',
-					'faq' 			=> '',
-					'screenshots' 	=> '',
-					'changelog' 	=> '',
-					'other_notes' 	=> ''
-				);
-				break;
-			/**
-			 * more theme info
-			 * wp-admin/includes/theme-install.php
-			 * WordPress Theme Install Administration API
-			 * $theme_field_defaults
-			 *
-			 * wp-admin/includes/theme.php
-			 * function themes_api()
-			 */
-
-		}
-
-		nocache_headers();
-
-		die( serialize( $response ) );
-
-	} else {
-
-		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
-
-	}
-}
-
-function wc_edd_get_product_checkbox_status( $post_id, $meta_key ) {
-
-	$result = get_post_meta( $post_id, $meta_key, true );
-
-	if ( $result == 'yes' ) {
-		return true;
-	} else {
-		return false;
+		case 'pluginupdatecheck':
+			$response->slug 					= $plugin_name;
+			$response->new_version 				= $new_version;
+			$response->url 						= $api_data['_api_plugin_url'][0];
+			$response->package 					= $download_link;
+			break;
+		/**
+		 * Request for detailed information for view details page
+		 * more plugin info:
+		 * wp-admin/includes/plugin-install.php
+		 * Display plugin information in dialog box form.
+		 * function install_plugin_information()
+		 */
+		case 'plugininformation':
+			$response->name 					= $_REQUEST[ 'product_id' ];
+			$response->version 					= $new_version;
+			$response->slug 					= $plugin_name;
+			$response->author 					= $api_data['_api_author'][0];
+			$response->homepage 				= $api_data['_api_plugin_url'][0];
+			$response->requires 				= $api_data['_api_version_required'][0];
+			$response->tested 					= $api_data['_api_tested_up_to'][0];
+			$response->downloaded 				= $download_count;
+			$response->last_updated 			= $api_data['_api_last_updated'][0];
+			$response->download_link 			= $download_link;
+			$response->sections = array(
+				'description' 	=> $desc_obj,
+				'installation' 	=> $install_obj,
+				'faq' 			=> $faq_obj,
+				'screenshots' 	=> $screen_obj,
+				'changelog' 	=> $change_obj,
+				'other_notes' 	=> $notes_obj,
+			);
+			break;
 	}
 
-}
+	nocache_headers();
 
-
-function wc_edd_is_plugin_active( $slug ) {
-	$active_plugins = (array) get_option( 'active_plugins', array() );
-
-	if ( is_multisite() )
-		$active_plugins = array_merge( $active_plugins, get_site_option( 'active_sitewide_plugins', array() ) );
-
-	return in_array( $slug, $active_plugins ) || array_key_exists( $slug, $active_plugins );
+	die( serialize( $response ) );
 }
 
 function wc_edd_array_search_multi( $array, $value, $needle ) {
@@ -469,7 +392,6 @@ function wc_edd_send_error_api_data( $request, $errors ) {
 	die( serialize( $response ) );
 }
 
-
 function wc_edd_software_api_send_error() {
 
 	$error = array(
@@ -493,7 +415,7 @@ function wc_edd_software_api_send_error() {
 
 	$sig = 'secret=' . $secret . '&' . $sig;
 
-	if ( !$this->debug ) $sig = md5( $sig );
+	$sig = md5( $sig );
 
 	$error['sig'] = $sig;
 
@@ -582,7 +504,7 @@ if ( isset( $_REQUEST[ 'wc-api' ] ) ) switch( $_REQUEST[ 'wc-api' ] ) {
 					/**
 					 * Verify the client Software Title matches the product Software Title
 					 */
-					if ( $software_title != $this->product_id  ) {
+					if ( $software_title != $_REQUEST[ 'product_id' ]  ) {
 
 						wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'no_key' => 'no_key' ) );
 
@@ -602,19 +524,11 @@ if ( isset( $_REQUEST[ 'wc-api' ] ) ) switch( $_REQUEST[ 'wc-api' ] ) {
 						}
 
 						// If false is returned then the software has not yet been activated and an error is returned
-						if ( ! empty( $this->instance ) && wc_edd_array_search_multi( $current_info, 'instance', $this->instance ) === false ) {
+						if ( ! empty( $_REQUEST[ 'instance' ] ) && wc_edd_array_search_multi( $current_info, 'instance', $_REQUEST[ 'instance' ] ) === false ) {
 
 							wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'no_activation' => 'no_activation' ) );
 
 						}
-
-						// If false is returned then the software has not yet been activated and an error is returned
-						// if ( ! empty( $this->domain ) && wc_edd_array_search_multi( $current_info, 'activation_domain', $this->domain ) === false ) {
-
-						// 	wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'no_activation' => 'no_activation' ) );
-
-						// }
-
 
 					} else { // Send an error if this software has not been activated
 
@@ -673,101 +587,12 @@ if ( isset( $_REQUEST[ 'wc-api' ] ) ) switch( $_REQUEST[ 'wc-api' ] ) {
 
 							wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'exp_license' => 'exp_license' ) );
 
-							// If Subscriptions is active, and if a subscription is required for this product
-//						} else if ( wc_edd_is_plugin_active( 'woocommerce-subscriptions/woocommerce-subscriptions.php' ) && wc_edd_get_product_checkbox_status( $post_id, '_api_is_subscription' ) === true ) {
-//
-//							// Get the subscription status i.e. active
-//							$status = WCAM()->helpers->get_subscription_status( $user->ID, $post_id, $order_id, $product_id );
-//
-//							// Send an error if no subscription is found and if the API key doesn't match what was sent by the software
-//							if ( $status === false ) {
-//
-//								if ( $key_exists ) { // Matched the API Key, send the update data
-//
-//									// Update the software version for this user order
-//									if ( ! empty( $this->software_version ) ) {
-//
-//										//$this->update_order_version( $user->ID, $order_info );
-//
-//										$this->update_activation_version( $user->ID, $current_info, $api_key, $order_key );
-//
-//									}
-//
-//									/**
-//									 * Allows third party plugins to receive any kind of data from client software through the Update API
-//									 * @since 1.3
-//									 */
-//									if ( ! empty( $this->extra ) ) {
-//
-//										do_action( 'api_manager_extra_data', $this->extra );
-//
-//									}
-//
-//									$this->send_api_data( $_REQUEST[ 'request' ], $_REQUEST[ 'plugin_name' ], $this->version, $order_id, $_REQUEST[ 'api_key' ], $_REQUEST[ 'activation_email' ], $post_id, $order_key, $user );
-//
-//								} else { // No API Key match, send an error
-//
-//									wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'no_subscription' => 'no_subscription', 'no_key' => 'no_key' ) );
-//
-//								}
-//
-//							}
-//
-//							// Sends update data if subscription is active, otherwise an error message is sent
-//							if ( $status == 'active' && $status !== false && $key_exists ) {
-//
-//								// Update the software version for this user order
-//								if ( ! empty( $this->software_version ) ) {
-//
-//									//$this->update_order_version( $user->ID, $order_info );
-//
-//									$this->update_activation_version( $user->ID, $current_info, $api_key, $order_key );
-//
-//								}
-//
-//								/**
-//								 * Allows third party plugins to receive any kind of data from client software through the Update API
-//								 * @since 1.3
-//								 */
-//								if ( ! empty( $this->extra ) ) {
-//
-//									do_action( 'api_manager_extra_data', $this->extra );
-//
-//								}
-//
-//								$this->send_api_data( $_REQUEST[ 'request' ], $_REQUEST[ 'plugin_name' ], $this->version, $order_id, $_REQUEST[ 'api_key' ], $_REQUEST[ 'activation_email' ], $post_id, $order_key, $user );
-//
-//							} else {
-//
-//								wc_edd_send_error_api_data( $_REQUEST[ 'request' ], WCAM()->helpers->check_subscription_status( $status ) );
-//
-//							}
-//
-							// If the API License Key is valid, and a subscription is not required for this product
-						} else if ( $key_exists && WCAM()->helpers->get_product_checkbox_status( $post_id, '_api_is_subscription' ) === false ) {
-
-							// Update the software version for this user order
-//							if ( ! empty( $this->software_version ) ) {
-//
-//								//$this->update_order_version( $user->ID, $order_info );
-//
-//								$this->update_activation_version( $user->ID, $current_info, $api_key, $order_key );
-//
-//							}
-
-							/**
-							 * Allows third party plugins to receive any kind of data from client software through the Update API
-							 * @since 1.3
-							 */
-//							if ( ! empty( $this->extra ) ) {
-//
-//								do_action( 'api_manager_extra_data', $this->extra );
-//
-//							}
+							// If the API License Key is valid
+						} else {
 
 							wc_edd_send_api_data( $_REQUEST[ 'request' ], $_REQUEST[ 'plugin_name' ], $_REQUEST[ 'version' ], $order_id, $_REQUEST[ 'api_key' ], $_REQUEST[ 'activation_email' ], $post_id, $order_key, $user );
 
-						} // end if subscriptions installed
+						} // end if api key valid
 
 					} // end if isset data variables
 				} else {

@@ -603,8 +603,6 @@ foreach( $wc_product_list as $p ) {
 		echo $temp_log_str;
 	}
 
-	var_dump($reviews);
-
 	// Earnings
 	// TODO - Do it when migrating orders i.e. Payment History
 }

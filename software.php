@@ -470,6 +470,38 @@ function wc_edd_send_error_api_data( $request, $errors ) {
 }
 
 
+function wc_edd_software_api_send_error() {
+
+	$error = array(
+		'error' => __( 'You need to upgrade our new version of plugin. We have migrated our store to EDD.' ),
+	    'code' => '106',
+	    'additional_info' => __( 'Additional Information' ),
+	    'timestamp' => time(),
+	);
+
+	foreach ( $error as $k => $v ) {
+
+		if ( $v === false ) $v = 'false';
+
+		if ( $v === true ) $v = 'true';
+
+		$sigjoined[] = "$k=$v";
+
+	}
+
+	$sig = implode( '&', $sigjoined );
+
+	$sig = 'secret=' . $secret . '&' . $sig;
+
+	if ( !$this->debug ) $sig = md5( $sig );
+
+	$error['sig'] = $sig;
+
+	$json = $error;
+
+	wp_send_json( $json );
+}
+
 /**
  * WordPress Load
  */
@@ -498,8 +530,9 @@ if ( isset( $_REQUEST[ 'wc-api' ] ) ) switch( $_REQUEST[ 'wc-api' ] ) {
 
 		if ( isset( $_REQUEST[ 'request' ] ) ) switch ( $_REQUEST[ 'request' ] ) {
 			case 'status':
-				break;
 			case 'activation':
+			case 'deactivation':
+				wc_edd_software_api_send_error();
 				break;
 		}
 		break;

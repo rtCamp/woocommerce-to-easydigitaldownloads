@@ -246,6 +246,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
+	$debug_log .= "EDD ORDER QUERY : ".$edd_order->query."\n\n";
 	$debug_log .= "EDD ORDER QUERY POSTS : ".var_export($edd_order->posts,true)."\n\n";
 
 	if( empty( $edd_order->posts ) ) {
@@ -269,6 +270,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
+	$debug_log .= "EDD PRODUCT QUERY : ".$edd_product->query."\n\n";
 	$debug_log .= "EDD PRODUCT QUERY POSTS : ".var_export($edd_product->posts,true)."\n\n";
 
 	if ( empty( $edd_product->posts ) ) {

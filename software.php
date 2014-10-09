@@ -19,7 +19,7 @@ function wc_edd_email_purchase_receipt( $payment_id, $download_id ) {
 
 	$to_email     = edd_get_payment_user_email( $payment_id );
 
-	$subject      = edd_get_option( 'purchase_subject', __( 'Purchase Receipt', 'edd' ) );
+	$subject      = edd_get_option( 'purchase_subject', __( 'New License Key', 'edd' ) );
 	$subject      = apply_filters( 'edd_purchase_subject', wp_strip_all_tags( $subject ), $payment_id );
 	$subject      = edd_do_email_tags( $subject, $payment_id );
 

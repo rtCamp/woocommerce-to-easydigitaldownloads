@@ -234,7 +234,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	$user_id                = $downloadable_data->user_id;
 	$order_id               = $downloadable_data->order_id;
 
-	$edd_order = get_posts(
+	$edd_order = new WP_Query(
 		array(
 			'post_type' => 'edd_payment',
 		    'post_status' => 'any',
@@ -246,17 +246,18 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
-	$debug_log .= "EDD ORDER QUERY POSTS : ".var_export($edd_order,true)."\n\n";
+	$debug_log .= "EDD ORDER QUERY POSTS : ".var_export($edd_order->posts,true)."\n\n";
 
-	if( empty( $edd_order ) ) {
+	if( empty( $edd_order->posts ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
 	}
 
+	$edd_order = $edd_order->posts;
 	$edd_order = $edd_order[0];
 
 	$edd_order_id = $edd_order->ID;
 
-	$edd_product = get_posts(
+	$edd_product = new WP_Query(
 		array(
 			'post_type' => 'download',
 			'post_status' => 'any',
@@ -268,12 +269,13 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
-	$debug_log .= "EDD PRODUCT QUERY POSTS : ".var_export($edd_product,true)."\n\n";
+	$debug_log .= "EDD PRODUCT QUERY POSTS : ".var_export($edd_product->posts,true)."\n\n";
 
-	if ( empty( $edd_product ) ) {
+	if ( empty( $edd_product->posts ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
 	}
 
+	$edd_product = $edd_product->posts;
 	$edd_product = $edd_product[0];
 
 	$edd_product_id = $edd_product->ID;

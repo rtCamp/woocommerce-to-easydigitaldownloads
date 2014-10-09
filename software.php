@@ -205,29 +205,20 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	 * Check for Amazon S3 URL
 	 * @since 1.3.2
 	 */
-	$url = wc_edd_get_download_url( $post_id );
 
-	if ( ! empty( $url ) && wc_edd_find_amazon_s3_in_url( $url ) === true ) {
+	// Build the order specific download URL
 
-		$download_link = wc_edd_format_secure_s3_url( $url );
+	$download_name 	= get_the_title( $edd_product_id );
+	$file_key 		= get_post_meta( $edd_product_id, '_edd_sl_upgrade_file_key', true );
 
-	} else {
+	$hash = md5( $download_name . $file_key . $edd_product_id );
 
-		// Build the order specific download URL
-
-		$download_name 	= get_the_title( $edd_product_id );
-		$file_key 		= get_post_meta( $edd_product_id, '_edd_sl_upgrade_file_key', true );
-
-		$hash = md5( $download_name . $file_key . $edd_product_id );
-
-		$download_link = add_query_arg( array(
-			'edd_action' 	=> 'package_download',
-			'id' 			=> $edd_product_id,
-			'key' 			=> $hash,
-			'expires'		=> rawurlencode( base64_encode( strtotime( '+1 hour' ) ) ),
-		), trailingslashit( home_url() ) );
-
-	}
+	$download_link = add_query_arg( array(
+		'edd_action' 	=> 'package_download',
+		'id' 			=> $edd_product_id,
+		'key' 			=> $hash,
+		'expires'		=> rawurlencode( base64_encode( strtotime( '+1 hour' ) ) ),
+	), trailingslashit( home_url() ) );
 
 	if ( $download_link === false || empty( $download_link ) ) {
 

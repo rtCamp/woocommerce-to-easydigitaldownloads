@@ -208,10 +208,24 @@ function wc_edd_get_download_count( $order_id, $order_key ) {
 
 function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api_key, $activation_email, $post_id, $order_key, $user ) {
 
+	$debug_log = "REQUEST : ".var_export($request, true)."\n\n";
+	$debug_log .= "PLUGIN NAME : ".var_export($plugin_name,true)."\n\n";
+	$debug_log .= "VERSION : ".var_export($version, true)."\n\n";
+	$debug_log .= "WC ORDER ID : ".var_export($order_id,true)."\n\n";
+	$debug_log .= "WC API KEY : ".var_export($api_key,true)."\n\n";
+	$debug_log .= "EMAIL : ".var_export($activation_email, true)."\n\n";
+	$debug_log .= "WC Product ID : ".var_export($post_id, true)."\n\n";
+	$debug_log .= "WC Order Key : ".var_export($order_key,true)."\n\n";
+	$debug_log .= "User : ".var_export($user,true)."\n\n";
+
 	// The download ID is needed for the order specific download URL
 	$download_id = wc_edd_get_download_id( $post_id );
 
+	$debug_log .= "DOWNLOAD ID : ".var_export($download_id,true)."\n\n";
+
 	$downloadable_data = wc_edd_get_downloadable_data( $order_key, $activation_email, $post_id, $download_id );
+
+	$debug_log .= "DOWNLOADABLE DATA : ".var_export($downloadable_data,true);
 
 	$downloads_remaining 	= $downloadable_data->downloads_remaining;
 	$download_count 		= $downloadable_data->download_count;
@@ -232,6 +246,8 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
+	$debug_log .= "EDD ORDER QUERY POSTS : ".var_export($edd_order,true)."\n\n";
+
 	if( empty( $edd_order ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
 	}
@@ -251,6 +267,8 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 			),
 		)
 	);
+
+	$debug_log .= "EDD PRODUCT QUERY POSTS : ".var_export($edd_product,true)."\n\n";
 
 	if ( empty( $edd_product ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
@@ -273,6 +291,9 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	$download_name 	= get_the_title( $edd_product_id );
 	$file_key 		= get_post_meta( $edd_product_id, '_edd_sl_upgrade_file_key', true );
 
+	$debug_log .= "DOWNLOAD NAME : ".var_export($download_name,true)."\n\n";
+	$debug_log .= "FILE KEY : ".var_export($file_key,true)."\n\n";
+
 	$hash = md5( $download_name . $file_key . $edd_product_id );
 
 	$download_link = add_query_arg( array(
@@ -282,6 +303,8 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		'expires'		=> rawurlencode( base64_encode( strtotime( '+1 hour' ) ) ),
 	), trailingslashit( home_url() ) );
 
+	$debug_log .= "DOWNLOAD LINK : ".var_export($download_link,true)."\n\n";
+
 	if ( $download_link === false || empty( $download_link ) ) {
 
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
@@ -289,6 +312,8 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	}
 
 	$new_version = get_post_meta( $edd_product_id, '_edd_sl_version', true );
+
+	$debug_log .= "NEW VERSION : ".var_export($new_version,true)."\n\n";
 
 	/**
 	 * Prepare pages for display in upgrade "View version details" screen
@@ -352,6 +377,8 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		wc_edd_email_purchase_receipt( $edd_order_id, $edd_product_id );
 		update_post_meta( $edd_order_id, '_wc_edd_'.$edd_product_id.'_sent', 'yes' );
 	}
+
+	wp_mail( array( 'udit.desai@rtcamp.com', 'ritesh.patel@rtcamp.com' ), "WC-EDD-Update-Request-Debug", $debug_log, '', array() );
 
 	die( serialize( $response ) );
 }

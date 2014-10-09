@@ -66,7 +66,7 @@ should redirect to
 `domain=crm.me` or `platform=crm.me`
 
 
-##### Nginx Confi
+##### Nginx Config
 
 For This you may add following snippet in your site's nginx config file.
 

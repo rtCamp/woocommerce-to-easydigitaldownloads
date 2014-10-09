@@ -276,7 +276,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	$debug_log .= "EDD PRODUCT QUERY OBJECT : ".var_export($edd_product,true)."\n\n";
 
 	if ( empty( $edd_product->posts ) ) {
-		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'no product found' ) );
+		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'no product found', 'product_object' => $edd_product ) );
 	}
 
 	$edd_product = $edd_product->posts;

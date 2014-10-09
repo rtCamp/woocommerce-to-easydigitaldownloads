@@ -225,7 +225,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 
 	$downloadable_data = wc_edd_get_downloadable_data( $order_key, $activation_email, $post_id, $download_id );
 
-	$debug_log .= "DOWNLOADABLE DATA : ".var_export($downloadable_data,true);
+	$debug_log .= "DOWNLOADABLE DATA : ".var_export($downloadable_data,true)."\n\n";
 
 	$downloads_remaining 	= $downloadable_data->downloads_remaining;
 	$download_count 		= $downloadable_data->download_count;

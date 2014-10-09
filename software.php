@@ -3,6 +3,48 @@
  * Helper Functions
  */
 
+function wc_edd_email_purchase_receipt( $payment_id, $download_id ) {
+
+	$payment_data = edd_get_payment_meta( $payment_id );
+
+	$download = get_post( $download_id );
+
+	$license = edd_software_licensing()->get_license_by_purchase( $payment_id, $download_id );
+
+	$from_name    = edd_get_option( 'from_name', wp_specialchars_decode( get_bloginfo( 'name' ), ENT_QUOTES ) );
+	$from_name    = apply_filters( 'edd_purchase_from_name', $from_name, $payment_id, $payment_data );
+
+	$from_email   = edd_get_option( 'from_email', get_bloginfo( 'admin_email' ) );
+	$from_email   = apply_filters( 'edd_purchase_from_address', $from_email, $payment_id, $payment_data );
+
+	$to_email     = edd_get_payment_user_email( $payment_id );
+
+	$subject      = edd_get_option( 'purchase_subject', __( 'Purchase Receipt', 'edd' ) );
+	$subject      = apply_filters( 'edd_purchase_subject', wp_strip_all_tags( $subject ), $payment_id );
+	$subject      = edd_do_email_tags( $subject, $payment_id );
+
+	$message = "Dear " . edd_email_tag_first_name( $payment_id ) . ",\n\n";
+	$message .= "As you have updated " . $download->post_title . ", please use following new license key to continue getting future updates: \n\n";
+	$message .= "License Key : " . edd_software_licensing()->get_license_key( $license->ID ) . "\n\n";
+	$message .= "Sorry for inconvenience.";
+
+	$emails = EDD()->emails;
+
+	$emails->__set( 'from_name', $from_name );
+	$emails->__set( 'from_email', $from_email );
+	$emails->__set( 'heading', __( 'Purchase Receipt', 'edd' ) );
+
+
+	$headers = apply_filters( 'edd_receipt_headers', $emails->get_headers(), $payment_id, $payment_data );
+	$emails->__set( 'headers', $headers );
+
+	$emails->send( $to_email, $subject, $message, array() );
+
+	if ( $admin_notice && ! edd_admin_notices_disabled( $payment_id ) ) {
+		do_action( 'edd_admin_sale_notice', $payment_id, $payment_data );
+	}
+}
+
 function wc_edd_decrypt( $string ) {
 
 	if ( empty( $string ) ) {
@@ -178,6 +220,26 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	$user_id                = $downloadable_data->user_id;
 	$order_id               = $downloadable_data->order_id;
 
+	$edd_order = get_posts(
+		array(
+			'post_type' => 'edd_payment',
+		    'post_status' => 'any',
+		    'nopaging' => true,
+		    'meta_query' => array(
+			    'key' => '_wc_order_id',
+		        'value' => $order_id,
+		    ),
+		)
+	);
+
+	if( empty( $edd_order ) ) {
+		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
+	}
+
+	$edd_order = $edd_order[0];
+
+	$edd_order_id = $edd_order->ID;
+
 	$edd_product = get_posts(
 		array(
 			'post_type' => 'download',
@@ -283,6 +345,13 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	}
 
 	nocache_headers();
+
+	$mail_sent = get_post_meta( $edd_order_id, '_wc_edd_'.$edd_product_id.'_sent', true );
+
+	if( $mail_sent != 'yes' ) {
+		wc_edd_email_purchase_receipt( $edd_order_id, $edd_product_id );
+		update_post_meta( $edd_order_id, '_wc_edd_'.$edd_product_id.'_sent', 'yes' );
+	}
 
 	die( serialize( $response ) );
 }

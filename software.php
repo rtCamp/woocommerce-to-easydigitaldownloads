@@ -246,8 +246,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
-	$debug_log .= "EDD ORDER QUERY : ".var_export($edd_order->query,true)."\n\n";
-	$debug_log .= "EDD ORDER QUERY POSTS : ".var_export($edd_order->posts,true)."\n\n";
+	$debug_log .= "EDD ORDER QUERY OBJECT : ".var_export($edd_order,true)."\n\n";
 
 	if( empty( $edd_order->posts ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );
@@ -270,8 +269,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
-	$debug_log .= "EDD PRODUCT QUERY : ".var_export($edd_product->query,true)."\n\n";
-	$debug_log .= "EDD PRODUCT QUERY POSTS : ".var_export($edd_product->posts,true)."\n\n";
+	$debug_log .= "EDD PRODUCT QUERY OBJECT : ".var_export($edd_product,true)."\n\n";
 
 	if ( empty( $edd_product->posts ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'download_revoked' ) );

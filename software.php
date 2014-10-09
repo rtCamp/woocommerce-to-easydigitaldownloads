@@ -216,7 +216,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 	$debug_log .= "EMAIL : ".var_export($activation_email, true)."\n\n";
 	$debug_log .= "WC Product ID : ".var_export($post_id, true)."\n\n";
 	$debug_log .= "WC Order Key : ".var_export($order_key,true)."\n\n";
-	$debug_log .= "User : ".var_export($user,true)."\n\n";
+	$debug_log .= "User ID: ".var_export($user->ID,true)."\n\n";
 
 	// The download ID is needed for the order specific download URL
 	$download_id = wc_edd_get_download_id( $post_id );
@@ -248,7 +248,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		)
 	);
 
-	$debug_log .= "EDD ORDER QUERY OBJECT : ".var_export($edd_order,true)."\n\n";
+	$debug_log .= "EDD ORDER QUERY : ".var_export($edd_order->request,true)."\n\n";
 
 	if( empty( $edd_order->posts ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'no order found' ) );
@@ -290,7 +290,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		);
 	}
 
-	$debug_log .= "EDD PRODUCT QUERY OBJECT : ".var_export($edd_product,true)."\n\n";
+	$debug_log .= "EDD PRODUCT QUERY : ".var_export($edd_product->request,true)."\n\n";
 
 	if ( empty( $edd_product->posts ) ) {
 		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'no product found' ) );

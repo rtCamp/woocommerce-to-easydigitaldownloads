@@ -458,7 +458,7 @@ function wc_edd_send_error_api_data( $request, $errors ) {
 function wc_edd_software_api_send_error() {
 
 	$error = array(
-		'error' => "You need to update with new version of " . $_REQUEST[ 'product_id' ] . " plugin. You can either update it on WordPress Update page or you can download it from <a href='https://rtcamp.com/my-account/' target='_blank'>My Account</a> page. Once you will update the plugin, you will receive a new license key via email",
+		'error' => "You need to update with new version of " . $_REQUEST[ 'product_id' ] . " plugin. You can either update it on WordPress Update page or you can download it from My Account page on our site. Once you will update the plugin, you will receive a new license key via email. You can also get the new license key from My Account page as well. My Account Link : <a href='https://rtcamp.com/my-account/' target='_blank'>My Account</a>",
 	    'code' => '106',
 	    'additional info' => '',
 	    'timestamp' => time(),

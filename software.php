@@ -259,24 +259,41 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 
 	$edd_order_id = $edd_order->ID;
 
-	$edd_product = new WP_Query(
-		array(
-			'post_type' => 'download',
-			'post_status' => 'any',
-			'nopaging' => true,
-			'meta_query' => array(
-				array(
-					'key' => '_wc_product_id',
-				    'value' => $product_id,
+	if ( get_post_type( $product_id ) == 'product_variation' ) {
+		$variation = get_post( $product_id );
+		$edd_product = new WP_Query(
+			array(
+				'post_type' => 'download',
+				'post_status' => 'any',
+				'nopaging' => true,
+				'meta_query' => array(
+					array(
+						'key' => '_wc_product_id',
+						'value' => $variation->post_parent,
+					),
 				),
-			),
-		)
-	);
+			)
+		);
+	} else {
+		$edd_product = new WP_Query(
+			array(
+				'post_type' => 'download',
+				'post_status' => 'any',
+				'nopaging' => true,
+				'meta_query' => array(
+					array(
+						'key' => '_wc_product_id',
+						'value' => $product_id,
+					),
+				),
+			)
+		);
+	}
 
 	$debug_log .= "EDD PRODUCT QUERY OBJECT : ".var_export($edd_product,true)."\n\n";
 
 	if ( empty( $edd_product->posts ) ) {
-		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'no product found', 'product_object' => $edd_product ) );
+		wc_edd_send_error_api_data( $_REQUEST[ 'request' ], array( 'download_revoked' => 'no product found' ) );
 	}
 
 	$edd_product = $edd_product->posts;

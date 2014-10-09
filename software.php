@@ -458,9 +458,9 @@ function wc_edd_send_error_api_data( $request, $errors ) {
 function wc_edd_software_api_send_error() {
 
 	$error = array(
-		'error' => __( 'You need to upgrade our new version of plugin. We have migrated our store to EDD.' ),
+		'error' => "You need to update with new version of " . $_REQUEST[ 'product_id' ] . " plugin. You can either update it on WordPress Update page or you can download it from <a href='https://rtcamp.com/my-account/' target='_blank'>My Account</a> page. Once you will update the plugin, you will receive a new license key via email",
 	    'code' => '106',
-	    'additional info' => __( 'Additional Information' ),
+	    'additional info' => '',
 	    'timestamp' => time(),
 	);
 
@@ -476,7 +476,7 @@ function wc_edd_software_api_send_error() {
 
 	$sig = implode( '&', $sigjoined );
 
-	$sig = 'secret=' . $secret . '&' . $sig;
+	$sig = 'secret=null&' . $sig;
 
 	$sig = md5( $sig );
 

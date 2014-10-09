@@ -12,7 +12,7 @@ You MUST take backups. Also, run this in demo environment.
 
 Put the files under `woocommerce-to-easydigitaldownloads` folder in WP Plugins directory (usually `/var/www/sitename/htdocs/wp-content/plugins/`)
 
-Ususally, 
+Usually, 
 
 ```
 git clone https://github.com/rtCamp/woocommerce-to-easydigitaldownloads/ /path/to/wordpress/wp-content/plugins/

@@ -240,8 +240,10 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		    'post_status' => 'any',
 		    'nopaging' => true,
 		    'meta_query' => array(
-			    'key' => '_wc_order_id',
-		        'value' => $order_id,
+			    array(
+				    'key' => '_wc_order_id',
+			        'value' => $order_id,
+			    )
 		    ),
 		)
 	);
@@ -263,8 +265,10 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 			'post_status' => 'any',
 			'nopaging' => true,
 			'meta_query' => array(
-				'key' => '_wc_product_id',
-			    'value' => $product_id,
+				array(
+					'key' => '_wc_product_id',
+				    'value' => $product_id,
+				),
 			),
 		)
 	);

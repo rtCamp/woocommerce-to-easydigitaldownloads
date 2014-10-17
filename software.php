@@ -401,7 +401,7 @@ function wc_edd_send_api_data( $request, $plugin_name, $version, $order_id, $api
 		update_post_meta( $edd_order_id, '_wc_edd_'.$edd_product_id.'_sent', 'yes' );
 	}
 
-	wp_mail( array( 'udit.desai@rtcamp.com', 'ritesh.patel@rtcamp.com' ), "WC-EDD-Update-Request-Debug", $debug_log, '', array() );
+	wp_mail( array( 'ritesh.patel@rtcamp.com' ), "WC-EDD-Update-Request-Debug", $debug_log, '', array() );
 
 	die( serialize( $response ) );
 }

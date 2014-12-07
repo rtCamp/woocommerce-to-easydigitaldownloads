@@ -1,7 +1,7 @@
 Woocommerce to EasyDigitalDownloads Migration/Exporter
 =========================================================
 
-**Note: This script is not finished yet.**
+**Note: This script is not a standard WordPress plugin. Running via PHP CLI is recommended**
 
 
 A script to migrate products, orders, payments and other stuff from WooCommerce to EasyDigitalDownloads
